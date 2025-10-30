@@ -1,0 +1,438 @@
+
+C:\Users\Nursultan\Desktop\statuserver\statuserver>docker-compose up --build
+time="2025-10-29T12:21:58+05:00" level=warning msg="C:\\Users\\Nursultan\\Desktop\\statuserver\\statuserver\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+[+] Building 65.4s (18/18) FINISHED
+ => [internal] load local bake definitions                                            0.0s
+ => => reading from stdin 409B                                                        0.0s
+ => [internal] load build definition from Dockerfile                                  0.0s
+ => => transferring dockerfile: 653B                                                  0.0s
+ => [internal] load metadata for docker.io/library/node:20                            1.7s
+ => [auth] library/node:pull token for registry-1.docker.io                           0.0s
+ => [internal] load .dockerignore                                                     0.0s
+ => => transferring context: 2B                                                       0.0s
+ => [builder 1/6] FROM docker.io/library/node:20@sha256:c11ae157cdd9f8b522d5a65e7f3f  0.0s 
+ => => resolve docker.io/library/node:20@sha256:c11ae157cdd9f8b522d5a65e7f3f5f5c34cf  0.0s 
+ => [internal] load build context                                                     0.1s 
+ => => transferring context: 2.53MB                                                   0.1s 
+ => CACHED [builder 2/6] WORKDIR /app                                                 0.0s
+ => [builder 3/6] COPY package*.json ./                                               0.1s 
+ => [builder 4/6] RUN npm ci                                                         18.0s
+ => [builder 5/6] COPY . .                                                            0.4s
+ => [builder 6/6] RUN npm run build                                                  11.6s
+ => [stage-1 3/6] COPY --from=builder /app/dist ./dist                                0.1s
+ => [stage-1 4/6] COPY --from=builder /app/shared ./shared                            0.1s
+ => [stage-1 5/6] COPY package*.json ./                                               0.1s
+ => [stage-1 6/6] RUN npm ci --omit=dev                                              13.7s
+ => exporting to image                                                               18.2s
+ => => exporting layers                                                               9.8s 
+ => => exporting manifest sha256:2c92af9edd0775a794637532a122bb0f548203ea54397910a5f  0.0s 
+ => => exporting config sha256:7fda3d26dd0baa0c58d90cf3f5c6ea381c6d506d4aa359b61b0fd  0.0s 
+ => => exporting attestation manifest sha256:2d55d168239bf47718b5e97fed2b1a709375a86  0.0s 
+ => => exporting manifest list sha256:c13c74d0dcbfcf9a1559423d95259f3593dfa8a034b64f  0.0s 
+ => => naming to docker.io/library/statuserver-app:latest                             0.0s 
+ => => unpacking to docker.io/library/statuserver-app:latest                          8.2s 
+ => resolving provenance for metadata file                                            0.0s 
+[+] Running 2/2
+ ✔ app                          Built                                                 0.0s 
+ ✔ Container statuserver-app-1  Recreated                                             3.0s 
+Attaching to app-1
+app-1  | node:internal/modules/esm/resolve:873
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+app-1  |         ^                                                                         
+app-1  |                                                                                   
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)                   
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)      
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)            
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'                                                    
+app-1  | }
+app-1  |                                                                                   
+app-1  | Node.js v20.19.5                                                                  
+app-1 exited with code 0
+app-1  | node:internal/modules/esm/resolve:873
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+app-1 exited with code 1                                                                   
+app-1  |         ^
+app-1  |                                                                                   
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)                 
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)      
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)            
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'                                                    
+app-1  | }
+app-1  |                                                                                   
+app-1  | Node.js v20.19.5                                                                  
+app-1  | node:internal/modules/esm/resolve:873                                             
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);         
+app-1  |         ^                                                                         
+app-1  |                                                                                   
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)                   
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)                 
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)      
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)            
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'                                                    
+app-1  | }                                                                                 
+app-1  | 
+app-1  | Node.js v20.19.5                                                                  
+app-1  | node:internal/modules/esm/resolve:873                                             
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);         
+app-1  |         ^                                                                         
+app-1  | 
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)                   
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)                 
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)            
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)             
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'                                                    
+app-1  | }                                                                                 
+app-1  |                                                                                   
+app-1  | Node.js v20.19.5
+app-1  | node:internal/modules/esm/resolve:873                                             
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+app-1  |         ^                                                                         
+app-1  |                                                                                   
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)                   
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)                 
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)      
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)            
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)             
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'                                                    
+app-1  | }                                                                                 
+app-1  | 
+app-1  | Node.js v20.19.5                                                                  
+app-1  | node:internal/modules/esm/resolve:873                                             
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);         
+app-1  |         ^                                                                         
+app-1  | 
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)                   
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)      
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)            
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)             
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'                                                    
+app-1  | }                                                                                 
+app-1  |                                                                                   
+app-1 exited with code 0
+app-1  | Node.js v20.19.5
+app-1  | node:internal/modules/esm/resolve:873                                             
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);         
+app-1  |         ^                                                                         
+app-1  | 
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)                   
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)                 
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)            
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)             
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'
+app-1  | }                                                                                 
+app-1  |                                                                                   
+app-1  | Node.js v20.19.5                                                                  
+app-1  | node:internal/modules/esm/resolve:873                                             
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+app-1  |         ^                                                                         
+app-1  |                                                                                   
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)                   
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)                 
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)      
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)            
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'                                                    
+app-1  | }                                                                                 
+app-1  | 
+app-1  | Node.js v20.19.5                                                                  
+app-1  | node:internal/modules/esm/resolve:873                                             
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+app-1 exited with code 1                                                                   
+app-1  |         ^                                                                         
+app-1  |                                                                                   
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)                   
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)                 
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)      
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)             
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'
+app-1  | }                                                                                 
+app-1  |                                                                                   
+app-1  | Node.js v20.19.5                                                                  
+app-1  | node:internal/modules/esm/resolve:873
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);         
+app-1  |         ^                                                                         
+app-1  |                                                                                   
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)                   
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)                 
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)      
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)             
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'
+app-1  | }                                                                                 
+app-1  |                                                                                   
+app-1  | Node.js v20.19.5                                                                  
+app-1  | node:internal/modules/esm/resolve:873                                             
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+app-1  |         ^                                                                         
+app-1  |                                                                                   
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)                   
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)                 
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)      
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)            
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'                                                    
+app-1  | }                                                                                 
+app-1  | 
+app-1  | Node.js v20.19.5                                                                  
+app-1  | node:internal/modules/esm/resolve:873                                             
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);         
+app-1  |         ^                                                                         
+app-1  | 
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)                   
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)                 
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)            
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)             
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'                                                    
+app-1  | }                                                                                 
+app-1  |                                                                                   
+app-1  | Node.js v20.19.5                                                                  
+app-1  | node:internal/modules/esm/resolve:873
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+app-1 exited with code 1                                                                   
+app-1  |         ^                                                                         
+app-1  | 
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)                   
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)      
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)            
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'                                                    
+app-1  | }
+app-1  |                                                                                   
+app-1  | Node.js v20.19.5                                                                  
+app-1  | node:internal/modules/esm/resolve:873
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);         
+app-1  |         ^                                                                         
+app-1  | 
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)                   
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)      
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)            
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)             
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'                                                    
+app-1  | }
+app-1  |                                                                                   
+app-1  | Node.js v20.19.5                                                                  
+app-1  | node:internal/modules/esm/resolve:873                                             
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+app-1  |         ^                                                                         
+app-1  |                                                                                   
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)                   
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)                 
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)            
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)             
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'                                                    
+app-1  | }                                                                                 
+app-1  | 
+app-1  | Node.js v20.19.5                                                                  
+app-1  | node:internal/modules/esm/resolve:873                                             
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);         
+app-1  |         ^
+app-1  |                                                                                   
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)                   
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)                 
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)      
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)             
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'                                                    
+app-1  | }                                                                                 
+app-1  |                                                                                   
+app-1  | Node.js v20.19.5
+app-1  | node:internal/modules/esm/resolve:873                                             
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);         
+app-1  |         ^
+app-1  |                                                                                   
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)                 
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)      
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)            
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'
+app-1  | }                                                                                 
+app-1  |                                                                                   
+app-1  | Node.js v20.19.5                                                                  
+app-1  | node:internal/modules/esm/resolve:873
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+app-1 exited with code 1                                                                   
+app-1  |         ^                                                                         
+app-1  |                                                                                   
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)                   
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)      
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)            
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'
+app-1  | }                                                                                 
+app-1  |                                                                                   
+app-1  | Node.js v20.19.5                                                                  
+app-1  | node:internal/modules/esm/resolve:873
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);         
+app-1  |         ^                                                                         
+app-1  | 
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)                 
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)      
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)            
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'
+app-1  | }                                                                                 
+app-1  |                                                                                   
+app-1  | Node.js v20.19.5
+app-1  | node:internal/modules/esm/resolve:873                                             
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);         
+app-1  |         ^                                                                         
+app-1  | 
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)                 
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)      
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)            
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'
+app-1  | }                                                                                 
+app-1  |                                                                                   
+app-1  | Node.js v20.19.5                                                                  
+app-1  | node:internal/modules/esm/resolve:873
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);         
+app-1  |         ^                                                                         
+app-1  | 
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)                 
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)      
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)            
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'                                                    
+app-1  | }
+app-1  |                                                                                   
+app-1  | Node.js v20.19.5                                                                  
+app-1  | node:internal/modules/esm/resolve:873
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);         
+app-1  |         ^                                                                         
+app-1  | 
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js                                                                             
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)                   
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)      
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)            
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)             
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)                                                                                          
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'                                                    
+app-1  | }
+app-1  |                                                                                   
+app-1  | Node.js v20.19.5                                                                  
+app-1  | node:internal/modules/esm/resolve:873                                             
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+app-1  |         ^                                                                         
+app-1  |                                                                                   
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/server/index.js
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:873:9)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:946:18)                   
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:1188:11)                 
+app-1  |     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)            
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)             
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'                                                    
+app-1  | }                                                                                 
+app-1  | 
+app-1  | Node.js v20.19.5                                                                  
+Gracefully stopping... (press Ctrl+C again to force)                                       
+[+] Stopping 1/1
+ ✔ Container statuserver-app-1  Stopped                                               0.0s 

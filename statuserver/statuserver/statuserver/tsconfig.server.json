@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["server/**/*", "shared/**/*"],
+  "exclude": ["node_modules", "build", "dist", "client", "**/*.test.ts"],
+  "compilerOptions": {
+    "outDir": "dist",
+    "module": "ESNext",
+    "target": "ES2020",
+    "strict": false,
+    "noImplicitAny": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": false,
+    "noEmitOnError": false,
+    "baseUrl": ".",
+    "types": ["node"],
+    "moduleResolution": "bundler",
+    "paths": {
+      "@shared/*": ["./shared/*"]
+    }
+  }
+}

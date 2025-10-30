@@ -1,0 +1,54 @@
+:\Users\Nursultan\Desktop\statuserver\statuserver>docker-compose up --build
+time="2025-10-29T12:05:47+05:00" level=warning msg="C:\\Users\\Nursultan\\Desktop\\statuserver\\statuserver\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+[+] Building 1.9s (16/16) FINISHED
+ => [internal] load local bake definitions                                            0.0s
+ => => reading from stdin 409B                                                        0.0s
+ => [internal] load build definition from Dockerfile                                  0.0s
+ => => transferring dockerfile: 567B                                                  0.0s 
+ => [internal] load metadata for docker.io/library/node:20                            0.7s 
+ => [internal] load .dockerignore                                                     0.0s
+ => => transferring context: 2B                                                       0.0s 
+ => [internal] load build context                                                     0.0s 
+ => => transferring context: 3.62kB                                                   0.0s 
+ => [builder 1/6] FROM docker.io/library/node:20@sha256:c11ae157cdd9f8b522d5a65e7f3f  0.0s 
+ => => resolve docker.io/library/node:20@sha256:c11ae157cdd9f8b522d5a65e7f3f5f5c34cf  0.0s 
+ => CACHED [builder 2/6] WORKDIR /app                                                 0.0s 
+ => CACHED [builder 3/6] COPY package*.json ./                                        0.0s 
+ => CACHED [builder 4/6] RUN npm ci                                                   0.0s 
+ => CACHED [builder 5/6] COPY . .                                                     0.0s 
+ => CACHED [builder 6/6] RUN npm run build                                            0.0s 
+ => CACHED [stage-1 3/5] COPY --from=builder /app/dist ./dist                         0.0s 
+ => CACHED [stage-1 4/5] COPY package*.json ./                                        0.0s 
+ => CACHED [stage-1 5/5] RUN npm ci --omit=dev                                        0.0s 
+ => exporting to image                                                                0.2s
+ => => exporting layers                                                               0.0s 
+ => => exporting manifest sha256:c5cc39f0ca9072960b91f076320302861b77db536f3cf3a0710  0.0s
+ => => exporting config sha256:1db029e0ea08e6be488eb3bbe068ff17aeef80e496c003c6c88ca  0.0s 
+ => => exporting attestation manifest sha256:4fadb3844357ecce78510970974c7ff78100254  0.0s 
+ => => exporting manifest list sha256:e5a3dc4f7f9779371a38e274fc2bfb454db76383bf40d5  0.0s 
+ => => naming to docker.io/library/statuserver-app:latest                             0.0s 
+ => => unpacking to docker.io/library/statuserver-app:latest                          0.0s 
+ => resolving provenance for metadata file                                            0.0s 
+[+] Running 2/2
+ ✔ app                          Built                                                 0.0s 
+ ✔ Container statuserver-app-1  Recreated                                             2.8s 
+Attaching to app-1
+app-1  | node:internal/modules/cjs/loader:1210
+app-1  |   throw err;
+app-1  |   ^                                                                               
+app-1  |                                                                                   
+app-1  | Error: Cannot find module '/app/dist/index.js'
+app-1  |     at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)         
+app-1  |     at Module._load (node:internal/modules/cjs/loader:1038:27)                    
+app-1  |     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)                                                                                   
+app-1  |     at node:internal/main/run_main_module:28:49 {
+app-1  |   code: 'MODULE_NOT_FOUND',                                                       
+app-1  |   requireStack: []
+app-1  | }                                                                                 
+app-1  |                                                                                   
+app-1  | Node.js v20.19.5
+app-1 exited with code 0
+Gracefully stopping... (press Ctrl+C again to force)
+[+] Stopping 1/1
+ ✔ Container statuserver-app-1  Stopped                                               0.7s 
+

@@ -79,3 +79,9 @@ export type ServerMetrics = typeof serverMetrics.$inferSelect;
 export type ServiceStatus = "operational" | "degraded" | "down" | "maintenance" | "loading";
 export type IncidentSeverity = "minor" | "major" | "critical";
 export type IncidentStatus = "investigating" | "identified" | "monitoring" | "resolved";
+
+export const serviceSchema = insertServiceSchema.extend({
+  id: z.string(),
+  updatedAt: z.string().datetime(),
+  entityType: z.enum(["server", "service"]).optional(),
+});

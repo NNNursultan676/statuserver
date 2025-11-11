@@ -33,7 +33,7 @@ export default function Analytics() {
 
   const { data: allMetrics = [] } = useQuery<ServerMetrics[]>({
     queryKey: ["/api/server-metrics"],
-    refetchInterval: 30000, // Auto-refresh every 30 seconds
+    refetchInterval: 3000, // Auto-refresh every 3 seconds
     refetchIntervalInBackground: true,
   });
 
@@ -52,13 +52,12 @@ export default function Analytics() {
         }
         return { start: subDays(now, 30), end: now };
       default:
-        return null;
+        return { start: subDays(now, 30), end: now };
     }
   };
 
   const filterByDate = (date: Date) => {
     const range = getDateRangeFilter();
-    if (!range) return true;
     return isWithinInterval(date, { start: startOfDay(range.start), end: endOfDay(range.end) });
   };
 
@@ -70,7 +69,7 @@ export default function Analytics() {
 
   const range = getDateRangeFilter();
   const filteredMetrics = allMetrics.filter((metric) =>
-    range ? filterByDate(new Date(metric.timestamp)) : true
+    filterByDate(new Date(metric.timestamp))
   );
 
   const exportToPDF = () => {
@@ -596,6 +595,59 @@ export default function Analytics() {
         />
       </div>
 
+      {filteredMetrics.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <Cpu className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Avg CPU Usage</p>
+                <p className="text-2xl font-semibold">
+                  {(filteredMetrics.reduce((sum, m) => sum + m.cpuUsage, 0) / filteredMetrics.length).toFixed(1)}%
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {range ? `${format(range.start, "MMM d")} - ${format(range.end, "MMM d")}` : "All time"}
+                </p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-purple-500/10">
+                <HardDrive className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Avg RAM Usage</p>
+                <p className="text-2xl font-semibold">
+                  {(filteredMetrics.reduce((sum, m) => sum + m.ramUsage, 0) / filteredMetrics.length).toFixed(1)}%
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {range ? `${format(range.start, "MMM d")} - ${format(range.end, "MMM d")}` : "All time"}
+                </p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-amber-500/10">
+                <HardDrive className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Avg Disk Usage</p>
+                <p className="text-2xl font-semibold">
+                  {(filteredMetrics.reduce((sum, m) => sum + m.diskUsage, 0) / filteredMetrics.length).toFixed(1)}%
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {range ? `${format(range.start, "MMM d")} - ${format(range.end, "MMM d")}` : "All time"}
+                </p>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6">
           <h3 className="text-lg font-medium mb-6">Uptime Trend</h3>
@@ -774,7 +826,7 @@ export default function Analytics() {
                   : null;
                 const avgDisk = serviceMetrics.length > 0
                   ? (serviceMetrics.reduce((sum, m) => sum + m.diskUsage, 0) / serviceMetrics.length)
-                  : nullull;
+                  : null;
 
                 return (
                   <TableRow key={service.id}>

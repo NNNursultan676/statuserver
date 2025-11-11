@@ -1,35 +1,45 @@
 import { useQuery } from "@tanstack/react-query";
-import { Incident, Service } from "@shared/schema";
+import { Incident, Service, ServerMetrics } from "@shared/schema";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatDistanceToNow, format, subDays, eachDayOfInterval, subMonths, isWithinInterval, startOfDay, endOfDay } from "date-fns";
-import { AlertCircle, CheckCircle2, Clock, Search, TrendingUp } from "lucide-react";
+import { formatDistanceToNow, format, subDays, eachDayOfInterval, subMonths, isWithinInterval, startOfDay, endOfDay, eachHourOfInterval } from "date-fns";
+import { AlertCircle, CheckCircle2, Clock, Search, TrendingUp, Cpu, HardDrive, Server as ServerIcon } from "lucide-react";
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-type DateRange = "7days" | "30days" | "3months" | "all";
+type DateRange = "24hours" | "7days" | "30days" | "3months" | "all";
 
 export default function History() {
   const [dateRange, setDateRange] = useState<DateRange>("30days");
   const [severityFilter, setSeverityFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedService, setSelectedService] = useState<string>("all");
 
   const { data: allIncidents = [], isLoading } = useQuery<Incident[]>({
     queryKey: ["/api/incidents"],
+    refetchInterval: 1000, // Обновление каждую секунду
   });
 
   const { data: services = [] } = useQuery<Service[]>({
     queryKey: ["/api/services"],
+    refetchInterval: 1000, // Обновление каждую секунду
+  });
+
+  const { data: allMetrics = [] } = useQuery<ServerMetrics[]>({
+    queryKey: ["/api/server-metrics"],
+    refetchInterval: 1000, // Обновление каждую секунду
   });
 
   const getDateRangeFilter = () => {
     const now = new Date();
     switch (dateRange) {
+      case "24hours":
+        return { start: subDays(now, 1), end: now };
       case "7days":
         return { start: subDays(now, 7), end: now };
       case "30days":
@@ -79,7 +89,7 @@ export default function History() {
   };
 
   const range = getDateRangeFilter();
-  
+
   const getChartDays = () => {
     if (range) {
       return eachDayOfInterval({ start: range.start, end: range.end });
@@ -91,15 +101,15 @@ export default function History() {
       const incDate = new Date(inc.startedAt);
       return incDate < oldest ? incDate : oldest;
     }, new Date());
-    
+
     const startDate = new Date(Math.max(
       oldestIncident.getTime(),
       subMonths(new Date(), 6).getTime()
     ));
-    
+
     return eachDayOfInterval({ start: startDate, end: new Date() });
   };
-  
+
   const days = getChartDays();
 
   const getUptimeForDay = (date: Date) => {
@@ -128,6 +138,80 @@ export default function History() {
     };
   });
 
+  // Фильтруем метрики по выбранному периоду и сервису
+  const filteredMetrics = allMetrics.filter((m) => {
+    const metricsDate = new Date(m.timestamp);
+    const matchesDate = filterByDate(metricsDate);
+    const matchesService = selectedService === "all" || m.serviceId === selectedService;
+    return matchesDate && matchesService;
+  });
+
+  // Создаем данные для графиков метрик с учетом точности
+  const getMetricsChartData = () => {
+    if (filteredMetrics.length === 0) return [];
+
+    // Определяем интервал группировки в зависимости от периода
+    let groupByHours = 24;
+    if (dateRange === "24hours") {
+      groupByHours = 1;
+    } else if (dateRange === "7days") {
+      groupByHours = 6;
+    } else if (dateRange === "30days") {
+      groupByHours = 24;
+    } else if (dateRange === "3months") {
+      groupByHours = 72;
+    }
+
+    // Группируем метрики по временным интервалам
+    const groupedMetrics = new Map<string, ServerMetrics[]>();
+
+    filteredMetrics.forEach((metric) => {
+      const date = new Date(metric.timestamp);
+      const roundedHours = Math.floor(date.getHours() / groupByHours) * groupByHours;
+      const roundedDate = new Date(date);
+      roundedDate.setHours(roundedHours, 0, 0, 0);
+      const key = roundedDate.toISOString();
+
+      if (!groupedMetrics.has(key)) {
+        groupedMetrics.set(key, []);
+      }
+      groupedMetrics.get(key)!.push(metric);
+    });
+
+    // Вычисляем средние значения для каждой группы
+    const chartData = Array.from(groupedMetrics.entries())
+      .map(([timestamp, metrics]) => {
+        const avgCpu = metrics.reduce((sum, m) => sum + m.cpuUsage, 0) / metrics.length;
+        const avgRam = metrics.reduce((sum, m) => sum + m.ramUsage, 0) / metrics.length;
+        const avgDisk = metrics.reduce((sum, m) => sum + m.diskUsage, 0) / metrics.length;
+
+        return {
+          timestamp: new Date(timestamp),
+          date: dateRange === "24hours" 
+            ? format(new Date(timestamp), "HH:mm")
+            : dateRange === "7days"
+            ? format(new Date(timestamp), "MMM d HH:mm")
+            : format(new Date(timestamp), "MMM d"),
+          cpu: Number(avgCpu.toFixed(2)),
+          ram: Number(avgRam.toFixed(2)),
+          disk: Number(avgDisk.toFixed(2)),
+          count: metrics.length
+        };
+      })
+      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
+    return chartData;
+  };
+
+  const metricsChartData = getMetricsChartData();
+
+  // Вычисляем средние значения за весь выбранный период (только для отчетов)
+  const periodAverages = filteredMetrics.length > 0 ? {
+    cpu: (filteredMetrics.reduce((sum, m) => sum + m.cpuUsage, 0) / filteredMetrics.length).toFixed(1),
+    ram: (filteredMetrics.reduce((sum, m) => sum + m.ramUsage, 0) / filteredMetrics.length).toFixed(1),
+    disk: (filteredMetrics.reduce((sum, m) => sum + m.diskUsage, 0) / filteredMetrics.length).toFixed(1),
+  } : null;
+
   const unresolvedCount = incidents.filter((i) => i.status !== "resolved").length;
   const avgResolutionTime = incidents.filter((i) => i.resolvedAt).length > 0
     ? Math.round(
@@ -141,6 +225,28 @@ export default function History() {
           (1000 * 60)
       )
     : 0;
+
+  // Кастомный Tooltip для Grafana-стиля
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-gray-900/95 backdrop-blur-sm border border-gray-700 rounded-lg p-3 shadow-2xl">
+          <p className="text-white font-semibold text-sm mb-2">{label}</p>
+          {payload.map((entry: any, index: number) => (
+            <div key={index} className="flex items-center gap-2 text-xs">
+              <div 
+                className="w-3 h-3 rounded-sm" 
+                style={{ backgroundColor: entry.color }}
+              />
+              <span className="text-gray-300">{entry.name}:</span>
+              <span className="text-white font-bold">{entry.value.toFixed(1)}%</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="space-y-8">
@@ -186,49 +292,6 @@ export default function History() {
       </div>
 
       <Card className="p-6">
-        <h3 className="text-lg font-medium mb-6">Incident Trend</h3>
-        <ResponsiveContainer width="100%" height={250}>
-          <AreaChart data={incidentTrendData}>
-            <defs>
-              <linearGradient id="criticalGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(0 84% 60%)" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="hsl(0 84% 60%)" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="majorGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(38 92% 50%)" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="hsl(38 92% 50%)" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="minorGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(217 91% 60%)" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="hsl(217 91% 60%)" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis
-              dataKey="date"
-              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-              stroke="hsl(var(--border))"
-            />
-            <YAxis
-              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-              stroke="hsl(var(--border))"
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "hsl(var(--popover))",
-                border: "1px solid hsl(var(--border))",
-                borderRadius: "6px",
-              }}
-            />
-            <Legend />
-            <Line type="monotone" dataKey="critical" stroke="hsl(0 84% 60%)" strokeWidth={2} dot={{ r: 3 }} />
-            <Line type="monotone" dataKey="major" stroke="hsl(38 92% 50%)" strokeWidth={2} dot={{ r: 3 }} />
-            <Line type="monotone" dataKey="minor" stroke="hsl(217 91% 60%)" strokeWidth={2} dot={{ r: 3 }} />
-          </AreaChart>
-        </ResponsiveContainer>
-      </Card>
-
-      <Card className="p-6">
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -244,10 +307,24 @@ export default function History() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="24hours">Last 24 Hours</SelectItem>
               <SelectItem value="7days">Last 7 Days</SelectItem>
               <SelectItem value="30days">Last 30 Days</SelectItem>
               <SelectItem value="3months">Last 3 Months</SelectItem>
               <SelectItem value="all">All Time</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={selectedService} onValueChange={setSelectedService}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="All Services" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Services</SelectItem>
+              {services.map((service) => (
+                <SelectItem key={service.id} value={service.id}>
+                  {service.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Select value={severityFilter} onValueChange={setSeverityFilter}>
@@ -276,11 +353,309 @@ export default function History() {
         </div>
       </Card>
 
-      <Tabs defaultValue="timeline" className="w-full">
+      {/* Средние значения только для отчетов */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-blue-500/10">
+              <Cpu className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Report: Avg CPU</p>
+              <p className="text-2xl font-semibold">
+                {periodAverages ? `${periodAverages.cpu}%` : "N/A"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {selectedService === "all" 
+                  ? "All services" 
+                  : services.find(s => s.id === selectedService)?.name || "Selected service"}
+              </p>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-purple-500/10">
+              <ServerIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Report: Avg RAM</p>
+              <p className="text-2xl font-semibold">
+                {periodAverages ? `${periodAverages.ram}%` : "N/A"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {selectedService === "all" 
+                  ? "All services" 
+                  : services.find(s => s.id === selectedService)?.name || "Selected service"}
+                </p>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-amber-500/10">
+              <HardDrive className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Report: Avg Disk</p>
+              <p className="text-2xl font-semibold">
+                {periodAverages ? `${periodAverages.disk}%` : "N/A"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {selectedService === "all" 
+                  ? "All services" 
+                  : services.find(s => s.id === selectedService)?.name || "Selected service"}
+              </p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <Tabs defaultValue="uptime" className="w-full">
         <TabsList>
-          <TabsTrigger value="timeline" data-testid="tab-timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="uptime" data-testid="tab-uptime">Uptime History</TabsTrigger>
+          <TabsTrigger value="metrics" data-testid="tab-metrics">Resource Usage</TabsTrigger>
+          <TabsTrigger value="timeline" data-testid="tab-timeline">Incident Timeline</TabsTrigger>
           <TabsTrigger value="calendar" data-testid="tab-calendar">Calendar View</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="uptime" className="mt-6">
+          <Card className="p-6">
+            <h3 className="text-lg font-medium mb-6">Incident Trend</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={incidentTrendData}>
+                <defs>
+                  <linearGradient id="criticalGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(0 84% 60%)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(0 84% 60%)" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="majorGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(38 92% 50%)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(38 92% 50%)" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="minorGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(217 91% 60%)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(217 91% 60%)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                  stroke="hsl(var(--border))"
+                />
+                <YAxis
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                  stroke="hsl(var(--border))"
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                <Line type="monotone" dataKey="critical" stroke="hsl(0 84% 60%)" strokeWidth={2} dot={{ r: 3 }} name="Critical" />
+                <Line type="monotone" dataKey="major" stroke="hsl(38 92% 50%)" strokeWidth={2} dot={{ r: 3 }} name="Major" />
+                <Line type="monotone" dataKey="minor" stroke="hsl(217 91% 60%)" strokeWidth={2} dot={{ r: 3 }} name="Minor" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="metrics" className="space-y-6 mt-6">
+          {metricsChartData.length === 0 ? (
+            <Card className="p-12 text-center">
+              <ServerIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">No metrics data available for selected period</p>
+            </Card>
+          ) : (
+            <>
+              <Card className="p-6 bg-gradient-to-br from-gray-900/50 to-gray-800/50 border-gray-700/50 shadow-2xl">
+                <div className="mb-4">
+                  <h3 className="text-xl font-bold mb-1 flex items-center gap-2 text-white">
+                    <Cpu className="w-6 h-6 text-blue-400" />
+                    CPU Usage
+                  </h3>
+                  <p className="text-sm text-gray-400">
+                    {selectedService === "all" 
+                      ? "All services" 
+                      : services.find(s => s.id === selectedService)?.name || "Selected service"}
+                  </p>
+                </div>
+                <ResponsiveContainer width="100%" height={400}>
+                  <AreaChart data={metricsChartData}>
+                    <defs>
+                      <linearGradient id="cpuGrafana" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="rgb(31, 120, 193)" stopOpacity={0.9} />
+                        <stop offset="100%" stopColor="rgb(31, 120, 193)" stopOpacity={0.1} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: "rgba(255,255,255,0.7)", fontSize: 11 }}
+                      stroke="rgba(255,255,255,0.3)"
+                    />
+                    <YAxis
+                      domain={[0, 100]}
+                      tick={{ fill: "rgba(255,255,255,0.7)", fontSize: 11 }}
+                      stroke="rgba(255,255,255,0.3)"
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area
+                      type="monotone"
+                      dataKey="cpu"
+                      stroke="rgb(31, 120, 193)"
+                      fill="url(#cpuGrafana)"
+                      strokeWidth={2}
+                      name="CPU"
+                      dot={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </Card>
+
+              <Card className="p-6 bg-gradient-to-br from-gray-900/50 to-gray-800/50 border-gray-700/50 shadow-2xl">
+                <div className="mb-4">
+                  <h3 className="text-xl font-bold mb-1 flex items-center gap-2 text-white">
+                    <ServerIcon className="w-6 h-6 text-purple-400" />
+                    RAM Usage
+                  </h3>
+                  <p className="text-sm text-gray-400">
+                    {selectedService === "all" 
+                      ? "All services" 
+                      : services.find(s => s.id === selectedService)?.name || "Selected service"}
+                  </p>
+                </div>
+                <ResponsiveContainer width="100%" height={400}>
+                  <AreaChart data={metricsChartData}>
+                    <defs>
+                      <linearGradient id="ramGrafana" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="rgb(115, 191, 105)" stopOpacity={0.9} />
+                        <stop offset="100%" stopColor="rgb(115, 191, 105)" stopOpacity={0.1} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: "rgba(255,255,255,0.7)", fontSize: 11 }}
+                      stroke="rgba(255,255,255,0.3)"
+                    />
+                    <YAxis
+                      domain={[0, 100]}
+                      tick={{ fill: "rgba(255,255,255,0.7)", fontSize: 11 }}
+                      stroke="rgba(255,255,255,0.3)"
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area
+                      type="monotone"
+                      dataKey="ram"
+                      stroke="rgb(115, 191, 105)"
+                      fill="url(#ramGrafana)"
+                      strokeWidth={2}
+                      name="RAM"
+                      dot={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </Card>
+
+              <Card className="p-6 bg-gradient-to-br from-gray-900/50 to-gray-800/50 border-gray-700/50 shadow-2xl">
+                <div className="mb-4">
+                  <h3 className="text-xl font-bold mb-1 flex items-center gap-2 text-white">
+                    <HardDrive className="w-6 h-6 text-amber-400" />
+                    Disk Usage
+                  </h3>
+                  <p className="text-sm text-gray-400">
+                    {selectedService === "all" 
+                      ? "All services" 
+                      : services.find(s => s.id === selectedService)?.name || "Selected service"}
+                  </p>
+                </div>
+                <ResponsiveContainer width="100%" height={400}>
+                  <AreaChart data={metricsChartData}>
+                    <defs>
+                      <linearGradient id="diskGrafana" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="rgb(242, 204, 12)" stopOpacity={0.9} />
+                        <stop offset="100%" stopColor="rgb(242, 204, 12)" stopOpacity={0.1} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: "rgba(255,255,255,0.7)", fontSize: 11 }}
+                      stroke="rgba(255,255,255,0.3)"
+                    />
+                    <YAxis
+                      domain={[0, 100]}
+                      tick={{ fill: "rgba(255,255,255,0.7)", fontSize: 11 }}
+                      stroke="rgba(255,255,255,0.3)"
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area
+                      type="monotone"
+                      dataKey="disk"
+                      stroke="rgb(242, 204, 12)"
+                      fill="url(#diskGrafana)"
+                      strokeWidth={2}
+                      name="Disk"
+                      dot={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </Card>
+
+              <Card className="p-6 bg-gradient-to-br from-gray-900/50 to-gray-800/50 border-gray-700/50 shadow-2xl">
+                <h3 className="text-xl font-bold mb-2 flex items-center gap-2 text-white">
+                  <TrendingUp className="w-6 h-6 text-green-400" />
+                  Combined Resources
+                </h3>
+                <p className="text-sm text-gray-400 mb-4">
+                  {selectedService === "all" 
+                    ? "All services" 
+                    : services.find(s => s.id === selectedService)?.name || "Selected service"}
+                </p>
+                <ResponsiveContainer width="100%" height={450}>
+                  <LineChart data={metricsChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: "rgba(255,255,255,0.7)", fontSize: 11 }}
+                      stroke="rgba(255,255,255,0.3)"
+                    />
+                    <YAxis
+                      domain={[0, 100]}
+                      tick={{ fill: "rgba(255,255,255,0.7)", fontSize: 11 }}
+                      stroke="rgba(255,255,255,0.3)"
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend wrapperStyle={{ paddingTop: 20 }} />
+                    <Line 
+                      type="monotone" 
+                      dataKey="cpu" 
+                      stroke="rgb(31, 120, 193)" 
+                      strokeWidth={2.5} 
+                      dot={false}
+                      name="CPU" 
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="ram" 
+                      stroke="rgb(115, 191, 105)" 
+                      strokeWidth={2.5} 
+                      dot={false}
+                      name="RAM" 
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="disk" 
+                      stroke="rgb(242, 204, 12)" 
+                      strokeWidth={2.5} 
+                      dot={false}
+                      name="Disk" 
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Card>
+            </>
+          )}
+        </TabsContent>
 
         <TabsContent value="timeline" className="space-y-4 mt-6">
           {isLoading ? (

@@ -3,6 +3,7 @@ import csv
 import io
 import httpx
 from typing import Optional
+from datetime import datetime
 from fastapi import APIRouter, HTTPException, Query, Depends
 from fastapi.responses import Response, JSONResponse
 from pydantic import BaseModel, ValidationError
@@ -11,13 +12,14 @@ from models import (
     Service, InsertService,
     Incident, InsertIncident,
     InsertServerMetrics,
-    ServiceStatus
+    ServiceStatus, MetricsReport
 )
 from storage import storage
 from grafana_service import create_grafana_service
 from import_data import import_services_from_data
 from metrics_api_client import metrics_client
 from auth import require_admin
+import asyncio
 
 router = APIRouter()
 grafana_service = create_grafana_service(storage)
@@ -40,7 +42,7 @@ async def check_service_availability(address: str, port: Optional[int] = None) -
 def convert_to_csv(services: list) -> str:
     if not services:
         return ""
-    
+
     output = io.StringIO()
     if services:
         fieldnames = services[0].keys() if isinstance(services[0], dict) else list(vars(services[0]).keys())
@@ -51,7 +53,7 @@ def convert_to_csv(services: list) -> str:
                 writer.writerow(service)
             else:
                 writer.writerow(vars(service))
-    
+
     return output.getvalue()
 
 @router.get("/api/services")
@@ -59,11 +61,11 @@ async def get_services():
     try:
         # Проверяем доступность Metrics API
         api_available = await metrics_client.check_availability()
-        
+
         if api_available:
             # Получаем данные из Monitoring API
             services, metrics_list = await metrics_client.sync_services_from_api()
-            
+
             # Синхронизируем с локальным хранилищем
             for service in services:
                 existing = await storage.get_service(service.id)
@@ -84,20 +86,29 @@ async def get_services():
                 else:
                     # Обновляем статус существующего
                     await storage.update_service_status(service.id, service.status)
-            
+
             # Сохраняем метрики в базу данных
             for metrics_data in metrics_list:
                 try:
-                    metrics = InsertServerMetrics(
-                        serviceId=metrics_data['service_id'],
-                        cpuUsage=metrics_data['cpu_usage'],
-                        ramUsage=metrics_data['memory_usage'],
-                        diskUsage=metrics_data['disk_usage']
-                    )
+                    # Разделяем на категории и убираем URL/порты у серверов
+                    if service.category == "server":
+                        metrics = InsertServerMetrics(
+                            serviceId=metrics_data['service_id'],
+                            cpuUsage=metrics_data.get('cpu_usage'),
+                            ramUsage=metrics_data.get('memory_usage'),
+                            diskUsage=metrics_data.get('disk_usage')
+                        )
+                    else: # Для сервисов можем сохранить URL и порты, если они есть
+                        metrics = InsertServerMetrics(
+                            serviceId=metrics_data['service_id'],
+                            cpuUsage=metrics_data.get('cpu_usage'),
+                            ramUsage=metrics_data.get('memory_usage'),
+                            diskUsage=metrics_data.get('disk_usage')
+                        )
                     await storage.create_server_metrics(metrics)
                 except Exception as e:
                     print(f"Error saving metrics for {metrics_data['service_id']}: {e}")
-            
+
             return [s.model_dump(by_alias=True) for s in services]
         else:
             # API недоступен - возвращаем данные из локального хранилища
@@ -138,11 +149,11 @@ async def update_service_status(service_id: str, status_update: StatusUpdate, ad
         status = status_update.status
         if status not in ["operational", "degraded", "down", "maintenance", "loading"]:
             raise HTTPException(status_code=400, detail="Invalid status value")
-        
+
         service = await storage.update_service_status(service_id, status)
         if not service:
             raise HTTPException(status_code=404, detail="Service not found")
-        
+
         return service.model_dump(by_alias=True)
     except HTTPException:
         raise
@@ -211,7 +222,7 @@ async def import_services(import_data: ImportData, admin: str = Depends(require_
         data = import_data.data
         if not data:
             raise HTTPException(status_code=400, detail="No data provided")
-        
+
         count = await import_services_from_data(storage, data)
         return {"success": True, "imported": count}
     except HTTPException:
@@ -225,7 +236,7 @@ async def export_services(format: str = Query("json")):
     try:
         services = await storage.get_services()
         services_dict = [s.model_dump(by_alias=True) for s in services]
-        
+
         if format == "json":
             return JSONResponse(
                 content=services_dict,
@@ -249,19 +260,93 @@ async def export_services(format: str = Query("json")):
     except Exception as e:
         raise HTTPException(status_code=500, detail="Failed to export services")
 
-@router.post("/api/check-availability/{service_id}")
-async def check_availability(service_id: str):
+@router.post("/api/check-availability")
+async def check_availability_endpoint(address: str = Query(...), port: Optional[int] = Query(None)):
+    """
+    Проверка доступности по введенному адресу.
+    Отправка curl-подобного запроса.
+    """
     try:
-        service = await storage.get_service(service_id)
-        if not service or not service.address:
-            raise HTTPException(status_code=404, detail="Service not found or no address")
-        
-        available = await check_service_availability(service.address, service.port)
-        return {"available": available, "serviceId": service.id}
+        available = await check_service_availability(address, port)
+        return {"address": address, "port": port, "available": available}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to check availability: {str(e)}")
+
+@router.post("/api/reports/generate-metrics-report")
+async def generate_metrics_report(
+    start_time: datetime = Query(...),
+    end_time: datetime = Query(...)
+):
+    """
+    Генерация отчета по метрикам за указанный период.
+    Поддержка метрик в определенные часы (утро, обед, вечер).
+    """
+    try:
+        # Получаем все сервисы
+        services = await storage.get_services()
+        service_ids = [s.id for s in services]
+
+        # Получаем метрики за указанный период
+        # Здесь предполагается, что storage.get_server_metrics может фильтровать по времени
+        # Если нет, то нужно будет реализовать фильтрацию здесь
+        all_metrics = await storage.get_server_metrics() # Получаем все метрики
+        filtered_metrics = [
+            m for m in all_metrics
+            if start_time <= m.timestamp <= end_time
+        ]
+
+        # Группируем метрики по категориям (серверы, сервисы)
+        server_metrics = {s.id: [] for s in services if s.category == "server"}
+        service_metrics = {s.id: [] for s in services if s.category != "server"}
+
+        for metrics in filtered_metrics:
+            if metrics.serviceId in server_metrics:
+                server_metrics[metrics.serviceId].append(metrics)
+            elif metrics.serviceId in service_metrics:
+                service_metrics[metrics.serviceId].append(metrics)
+
+        # Вычисляем средние метрики за утро, обед, вечер
+        report_data = {}
+
+        for category, metrics_dict in [("server", server_metrics), ("service", service_metrics)]:
+            for service_id, metrics_list in metrics_dict.items():
+                if not metrics_list:
+                    continue
+
+                # Разбиваем метрики по времени суток (утро, обед, вечер)
+                morning_metrics = [m for m in metrics_list if 6 <= m.timestamp.hour < 12]
+                lunch_metrics = [m for m in metrics_list if 12 <= m.timestamp.hour < 18]
+                evening_metrics = [m for m in metrics_list if 18 <= m.timestamp.hour < 24 or 0 <= m.timestamp.hour < 6]
+
+                service_name = await storage.get_service(service_id).name if await storage.get_service(service_id) else f"Unknown Service ({service_id})"
+
+
+                def calculate_average(metrics_subset):
+                    if not metrics_subset:
+                        return {"cpuUsage": None, "ramUsage": None, "diskUsage": None}
+                    count = len(metrics_subset)
+                    avg_cpu = sum(m.cpuUsage for m in metrics_subset if m.cpuUsage is not None) / count
+                    avg_ram = sum(m.ramUsage for m in metrics_subset if m.ramUsage is not None) / count
+                    avg_disk = sum(m.diskUsage for m in metrics_subset if m.diskUsage is not None) / count
+                    return {"cpuUsage": avg_cpu, "ramUsage": avg_ram, "diskUsage": avg_disk}
+
+                report_data[f"{category}_{service_id}"] = MetricsReport(
+                    service_id=service_id,
+                    service_name=service_name,
+                    category=category,
+                    morning_avg=calculate_average(morning_metrics),
+                    lunch_avg=calculate_average(lunch_metrics),
+                    evening_avg=calculate_average(evening_metrics)
+                )
+
+        return {"report": report_data}
+
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Failed to check availability")
+        print(f"Error generating metrics report: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate metrics report")
+
 
 @router.get("/api/grafana/status")
 async def grafana_status():
@@ -280,7 +365,7 @@ async def grafana_sync(admin: str = Depends(require_admin)):
     try:
         if not grafana_service.is_configured():
             raise HTTPException(status_code=400, detail="Grafana is not configured")
-        
+
         result = await grafana_service.sync_service_statuses()
         return {
             "success": True,
@@ -304,7 +389,7 @@ async def grafana_metrics(query: str = Query('up{job="node_exporter"}')):
     try:
         if not grafana_service.is_configured():
             raise HTTPException(status_code=400, detail="Grafana is not configured")
-        
+
         metrics = await grafana_service.fetch_metrics(query)
         return {"success": True, "metrics": metrics, "count": len(metrics)}
     except HTTPException:

@@ -159,7 +159,7 @@ class MetricsAPIClient:
             # Определяем категорию
             category = self._map_server_name_to_category(server_name)
             
-            # Создаем сервис
+            # Создаем сервер (без URL и портов)
             service = Service(
                 id=service_id,
                 name=server_name,
@@ -169,8 +169,9 @@ class MetricsAPIClient:
                 status=status,
                 type="Server",
                 icon=self._get_icon_for_category(category),
-                address=None,
-                port=None,
+                address=None,  # Серверы не имеют URL
+                port=None,     # Серверы не имеют портов
+                entity_type="server",  # Это сервер
                 updated_at=datetime.fromisoformat(metrics['timestamp']) if 'timestamp' in metrics else datetime.now()
             )
             services.append(service)

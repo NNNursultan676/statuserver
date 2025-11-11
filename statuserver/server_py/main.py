@@ -73,6 +73,47 @@ async def lifespan(app: FastAPI):
 
         grafana_service = create_grafana_service(storage)
 
+        # Запускаем периодическую синхронизацию с Metrics API
+        async def metrics_sync_task():
+            """Синхронизация метрик каждую минуту"""
+            await asyncio.sleep(5)  # Начальная задержка
+
+            while True:
+                try:
+                    if await metrics_client.check_availability():
+                        # Получаем метрики и синхронизируем
+                        services, metrics_list = await metrics_client.sync_services_from_api()
+
+                        # Обновляем статусы сервисов
+                        for service in services:
+                            existing = await storage.get_service(service.id)
+                            if existing:
+                                await storage.update_service_status(service.id, service.status)
+
+                        # Сохраняем метрики
+                        for metrics_data in metrics_list:
+                            try:
+                                from models import InsertServerMetrics
+                                metrics = InsertServerMetrics(
+                                    serviceId=metrics_data['service_id'],
+                                    cpuUsage=metrics_data.get('cpu_usage'),
+                                    ramUsage=metrics_data.get('memory_usage'),
+                                    diskUsage=metrics_data.get('disk_usage')
+                                )
+                                await storage.create_server_metrics(metrics)
+                            except Exception as e:
+                                print(f"Error saving metrics for {metrics_data['service_id']}: {e}")
+
+                        print(f"✓ Метрики обновлены: {len(services)} сервисов, {len(metrics_list)} метрик")
+                except Exception as error:
+                    print(f"Metrics sync error: {error}")
+
+                await asyncio.sleep(1)  # Обновление каждую 1 секунду
+
+        # Запускаем задачу синхронизации метрик
+        asyncio.create_task(metrics_sync_task())
+        print("🔄 Запущена автоматическая синхронизация метрик (каждую секунду)")
+
         if grafana_service.is_configured():
             print("Grafana integration is configured. Starting automatic sync...")
 

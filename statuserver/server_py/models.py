@@ -17,6 +17,7 @@ class ServiceBase(BaseModel):
     icon: Optional[str] = None
     address: Optional[str] = None
     port: Optional[int] = None
+    entity_type: Literal["server", "service"] = "server"  # Тип сущности: сервер или сервис
 
 class Service(ServiceBase):
     id: str
@@ -96,3 +97,20 @@ class ServerMetrics(ServerMetricsBase):
 
 class InsertServerMetrics(ServerMetricsBase):
     pass
+
+class MetricsReport(BaseModel):
+    """Отчет о метриках за определенный период"""
+    report_time: Literal["morning", "afternoon", "evening"]  # Время отчета
+    timestamp: datetime = Field(default_factory=datetime.now)
+    services_count: int
+    avg_cpu: float
+    avg_ram: float
+    avg_disk: float
+    operational_count: int
+    degraded_count: int
+    down_count: int
+    
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }

@@ -132,7 +132,7 @@ export default function Dashboard() {
                       {unavailableServices.map((service) => {
                         const isDown = service.status === "down";
                         const isDegraded = service.status === "degraded";
-                        
+
                         return (
                           <TableRow key={service.id}>
                             <TableCell>
@@ -182,7 +182,7 @@ export default function Dashboard() {
                   {unavailableServices.map((service) => {
                     const isDown = service.status === "down";
                     const isDegraded = service.status === "degraded";
-                    
+
                     return (
                       <Card key={service.id} className="p-3">
                         <div className="space-y-2">
@@ -203,7 +203,7 @@ export default function Dashboard() {
                               )}
                             </div>
                           </div>
-                          
+
                           <div className="flex flex-wrap gap-2">
                             <Badge variant="secondary" className="text-xs">
                               {service.type || "Другое"}
@@ -212,7 +212,7 @@ export default function Dashboard() {
                               {service.region}
                             </Badge>
                           </div>
-                          
+
                           {service.address && (
                             <a
                               href={service.address?.startsWith('http') ? service.address : `http://${service.address}`}
@@ -404,9 +404,9 @@ export default function Dashboard() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[30%]">Name</TableHead>
-                          <TableHead className="w-[45%]">Address</TableHead>
-                          <TableHead className="w-[20%]">Port/URL</TableHead>
+                          <TableHead className="w-[40%]">Name</TableHead>
+                          <TableHead className="w-[35%]">Description</TableHead>
+                          <TableHead className="w-[20%]">Access</TableHead>
                           <TableHead className="w-[5%]">Статус</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -417,7 +417,7 @@ export default function Dashboard() {
                           const isDegraded = service.status === "degraded";
                           const isMaintenance = service.status === "maintenance";
                           const isLoadingStatus = service.status === "loading";
-                          
+
                           return (
                             <TableRow key={service.id}>
                               <TableCell className="font-medium">
@@ -436,33 +436,25 @@ export default function Dashboard() {
                                 </div>
                               </TableCell>
                               <TableCell>
-                                <a
-                                  href={service.address?.startsWith('http') ? service.address : `http://${service.address}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-primary hover:underline"
-                                >
-                                  {service.address}
-                                </a>
+                                {service.description}
                               </TableCell>
                               <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <span>{service.port}</span>
-                                  {service.address && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => openService(service.address, service.port)}
-                                      className="h-7 px-2"
-                                    >
-                                      Открыть
-                                    </Button>
-                                  )}
-                                </div>
+                                {service.address ? (
+                                  <a
+                                    href={service.address?.startsWith('http') ? service.address : `http://${service.address}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary hover:underline text-xs"
+                                  >
+                                    {service.address}
+                                  </a>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center justify-center">
-                                  {isOperational && (
+                                  {(isOperational || isMaintenance) && (
                                     <div className="flex items-center gap-2 bg-green-600 px-4 py-2 rounded-md border-2 border-green-700">
                                       <div className="w-3 h-3 rounded-full bg-white animate-pulse" />
                                       <span className="text-sm font-bold text-white">UP</span>
@@ -478,12 +470,6 @@ export default function Dashboard() {
                                     <div className="flex items-center gap-2 bg-amber-600 px-4 py-2 rounded-md border-2 border-amber-700">
                                       <div className="w-3 h-3 rounded-full bg-white animate-pulse" />
                                       <span className="text-sm font-bold text-white">WARN</span>
-                                    </div>
-                                  )}
-                                  {isMaintenance && (
-                                    <div className="flex items-center gap-2 bg-blue-600 px-4 py-2 rounded-md border-2 border-blue-700">
-                                      <div className="w-3 h-3 rounded-full bg-white" />
-                                      <span className="text-sm font-bold text-white">MAINT</span>
                                     </div>
                                   )}
                                   {isLoadingStatus && (
@@ -509,7 +495,7 @@ export default function Dashboard() {
                       const isDegraded = service.status === "degraded";
                       const isMaintenance = service.status === "maintenance";
                       const isLoadingStatus = service.status === "loading";
-                      
+
                       return (
                         <div key={service.id} className="p-3 space-y-2">
                           <div className="flex items-center justify-between gap-2">
@@ -527,7 +513,7 @@ export default function Dashboard() {
                               <h3 className="font-medium text-sm truncate">{service.name}</h3>
                             </div>
                             <div className="flex-shrink-0">
-                              {isOperational && (
+                              {(isOperational || isMaintenance) && (
                                 <div className="flex items-center gap-1 bg-green-600 px-2 py-1 rounded border border-green-700">
                                   <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                                   <span className="text-[10px] font-bold text-white">UP</span>
@@ -543,12 +529,6 @@ export default function Dashboard() {
                                 <div className="flex items-center gap-1 bg-amber-600 px-2 py-1 rounded border border-amber-700">
                                   <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                                   <span className="text-[10px] font-bold text-white">WARN</span>
-                                </div>
-                              )}
-                              {isMaintenance && (
-                                <div className="flex items-center gap-1 bg-blue-600 px-2 py-1 rounded border border-blue-700">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                                  <span className="text-[10px] font-bold text-white">MAINT</span>
                                 </div>
                               )}
                               {isLoadingStatus && (
@@ -570,14 +550,6 @@ export default function Dashboard() {
                               >
                                 {service.address}
                               </a>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openService(service.address, service.port)}
-                                className="h-7 px-2 text-xs flex-shrink-0"
-                              >
-                                Открыть
-                              </Button>
                             </div>
                           )}
                         </div>

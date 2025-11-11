@@ -25,9 +25,8 @@ async def sync_metrics_periodically():
 
             api_available = await metrics_client.check_availability()
             if api_available:
-                # services, metrics_list = await metrics_client.sync_services_from_api()
-                # For now, we'll just fetch metrics, not services
-                metrics_list = await metrics_client.fetch_metrics()
+                # Получаем метрики через правильный метод
+                services, metrics_list = await metrics_client.sync_services_from_api()
 
                 # Сохраняем метрики в базу данных
                 for metrics_data in metrics_list:

@@ -62,7 +62,7 @@ async def get_services():
         
         if api_available:
             # Получаем данные из Monitoring API
-            services = await metrics_client.sync_services_from_api()
+            services, metrics_list = await metrics_client.sync_services_from_api()
             
             # Синхронизируем с локальным хранилищем
             for service in services:
@@ -84,6 +84,19 @@ async def get_services():
                 else:
                     # Обновляем статус существующего
                     await storage.update_service_status(service.id, service.status)
+            
+            # Сохраняем метрики в базу данных
+            for metrics_data in metrics_list:
+                try:
+                    metrics = InsertServerMetrics(
+                        serviceId=metrics_data['service_id'],
+                        cpuUsage=metrics_data['cpu_usage'],
+                        ramUsage=metrics_data['memory_usage'],
+                        diskUsage=metrics_data['disk_usage']
+                    )
+                    await storage.create_server_metrics(metrics)
+                except Exception as e:
+                    print(f"Error saving metrics for {metrics_data['service_id']}: {e}")
             
             return [s.model_dump(by_alias=True) for s in services]
         else:

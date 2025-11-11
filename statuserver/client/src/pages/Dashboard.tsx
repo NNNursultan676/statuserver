@@ -20,6 +20,8 @@ export default function Dashboard() {
 
   const { data: services = [], isLoading } = useQuery<Service[]>({
     queryKey: ["/api/services"],
+    refetchInterval: 30000, // Auto-refresh every 30 seconds
+    refetchIntervalInBackground: true,
   });
 
   const { favorites, toggleFavorite, isFavorite } = useFavorites();

@@ -144,12 +144,14 @@ class MetricsAPIClient:
         }
         return icons.get(category, "server")
     
-    async def convert_metrics_to_services(self, metrics_data: List[Dict[str, Any]]) -> List[Service]:
+    async def convert_metrics_to_services(self, metrics_data: List[Dict[str, Any]]) -> tuple[List[Service], List[Dict[str, Any]]]:
         """Конвертировать метрики серверов в формат Service"""
         services = []
+        metrics_list = []
         
         for metrics in metrics_data:
             server_name = metrics.get('server_name', 'Unknown Server')
+            service_id = f"srv-{server_name.lower().replace(' ', '-')}"
             
             # Определяем статус на основе метрик
             status = self._determine_service_status(metrics)
@@ -159,7 +161,7 @@ class MetricsAPIClient:
             
             # Создаем сервис
             service = Service(
-                id=f"srv-{server_name.lower().replace(' ', '-')}",
+                id=service_id,
                 name=server_name,
                 description=f"{server_name} - CPU: {metrics.get('cpu_usage', 0):.1f}%, RAM: {metrics.get('memory_usage', 0):.1f}%, Disk: {metrics.get('disk_usage', 0):.1f}%",
                 category=category,
@@ -172,10 +174,19 @@ class MetricsAPIClient:
                 updated_at=datetime.fromisoformat(metrics['timestamp']) if 'timestamp' in metrics else datetime.now()
             )
             services.append(service)
+            
+            # Сохраняем метрики отдельно
+            metrics_list.append({
+                'service_id': service_id,
+                'cpu_usage': metrics.get('cpu_usage', 0),
+                'memory_usage': metrics.get('memory_usage', 0),
+                'disk_usage': metrics.get('disk_usage', 0),
+                'timestamp': metrics.get('timestamp', datetime.now().isoformat())
+            })
         
-        return services
+        return services, metrics_list
     
-    async def sync_services_from_api(self) -> List[Service]:
+    async def sync_services_from_api(self) -> tuple[List[Service], List[Dict[str, Any]]]:
         """Синхронизация сервисов из Monitoring API"""
         print("🔄 Синхронизация с Monitoring API...")
         
@@ -184,13 +195,13 @@ class MetricsAPIClient:
         
         if not metrics_data:
             print("⚠️  Нет данных от Monitoring API")
-            return []
+            return [], []
         
         # Конвертируем в формат Service
-        services = await self.convert_metrics_to_services(metrics_data)
+        services, metrics_list = await self.convert_metrics_to_services(metrics_data)
         
-        print(f"✓ Синхронизировано {len(services)} сервисов")
-        return services
+        print(f"✓ Синхронизировано {len(services)} сервисов и {len(metrics_list)} метрик")
+        return services, metrics_list
 
 
 # Создаем глобальный экземпляр клиента

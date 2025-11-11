@@ -33,6 +33,8 @@ export default function Analytics() {
 
   const { data: allMetrics = [] } = useQuery<ServerMetrics[]>({
     queryKey: ["/api/server-metrics"],
+    refetchInterval: 30000, // Auto-refresh every 30 seconds
+    refetchIntervalInBackground: true,
   });
 
   const getDateRangeFilter = () => {
@@ -772,7 +774,7 @@ export default function Analytics() {
                   : null;
                 const avgDisk = serviceMetrics.length > 0
                   ? (serviceMetrics.reduce((sum, m) => sum + m.diskUsage, 0) / serviceMetrics.length)
-                  : null;
+                  : nullull;
 
                 return (
                   <TableRow key={service.id}>

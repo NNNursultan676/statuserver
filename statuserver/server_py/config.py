@@ -11,7 +11,7 @@ class Config:
     
     # Настройки сервера
     PORT: int = int(os.getenv("PORT", "5000"))
-    HOST: str = os.getenv("HOST", "127.0.0.1")
+    HOST: str = os.getenv("HOST", "0.0.0.0")
     ENV: str = os.getenv("NODE_ENV", "production")
     
     # Аутентификация админки

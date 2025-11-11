@@ -33,7 +33,6 @@ outputType = "webview"
 [[ports]]
 localPort = 5000
 externalPort = 80
-exposeLocalhost = true
 
 [[ports]]
 localPort = 5173
@@ -42,3 +41,8 @@ externalPort = 5173
 [[ports]]
 localPort = 38631
 externalPort = 3000
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["bash", "-c", "cd statuserver/server_py && python main.py"]
+build = ["bash", "-c", "cd statuserver && npm install && npm run build"]

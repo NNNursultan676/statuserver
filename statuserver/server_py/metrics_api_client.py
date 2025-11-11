@@ -5,11 +5,11 @@ from datetime import datetime
 from models import Service, InsertService, ServiceStatus
 
 class MetricsAPIClient:
-    """Клиент для работы с внешним API метрик"""
+    """Клиент для работы с Monitoring API (Prometheus + Loki)"""
     
     def __init__(self, base_url: Optional[str] = None):
-        self.base_url = base_url or os.getenv('METRICS_API_URL', 'http://localhost:8000')
-        self.timeout = 10.0
+        self.base_url = base_url or os.getenv('METRICS_API_URL', 'http://10.183.45.198:8000')
+        self.timeout = 30.0
         self.is_available = False
         
     async def check_availability(self) -> bool:
@@ -24,118 +24,174 @@ class MetricsAPIClient:
             self.is_available = False
             return False
     
-    async def get_all_servers(self) -> List[Dict[str, Any]]:
-        """Получить список всех серверов из API метрик"""
+    async def get_all_servers_metrics(self) -> List[Dict[str, Any]]:
+        """Получить метрики для всех серверов из /metrics/servers/all"""
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.get(f"{self.base_url}/metrics/servers/all")
+                
+                if response.status_code != 200:
+                    print(f"Ошибка получения метрик: HTTP {response.status_code}")
+                    return []
+                    
+                data = response.json()
+                print(f"✓ Получено метрик для {len(data)} серверов")
+                return data
+        except Exception as e:
+            print(f"Ошибка при получении метрик серверов: {e}")
+            return []
+    
+    async def get_servers_status(self) -> Dict[str, Any]:
+        """Получить статус всех серверов из /metrics/servers"""
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.get(f"{self.base_url}/metrics/servers")
                 
                 if response.status_code != 200:
+                    print(f"Ошибка получения статуса серверов: HTTP {response.status_code}")
+                    return {"servers": [], "total_count": 0}
+                    
+                return response.json()
+        except Exception as e:
+            print(f"Ошибка при получении статуса серверов: {e}")
+            return {"servers": [], "total_count": 0}
+    
+    async def get_cpu_usage(self) -> List[Dict[str, Any]]:
+        """Получить использование CPU всех серверов"""
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.get(f"{self.base_url}/metrics/cpu/usage")
+                
+                if response.status_code != 200:
                     return []
                     
-                return response.json()
+                data = response.json()
+                return data.get('data', []) if isinstance(data, dict) else []
         except Exception as e:
-            print(f"Ошибка при получении серверов: {e}")
+            print(f"Ошибка при получении CPU метрик: {e}")
             return []
     
-    async def get_server_metrics(self, server_name: str) -> Optional[Dict[str, Any]]:
-        """Получить метрики конкретного сервера"""
+    async def get_memory_usage(self) -> List[Dict[str, Any]]:
+        """Получить использование памяти всех серверов"""
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(f"{self.base_url}/metrics/servers/{server_name}")
+                response = await client.get(f"{self.base_url}/metrics/memory/usage")
                 
                 if response.status_code != 200:
-                    return None
-                    
-                return response.json()
-        except Exception as e:
-            print(f"Ошибка при получении метрик сервера {server_name}: {e}")
-            return None
-    
-    async def get_server_cpu_usage(self, server_name: str) -> Optional[float]:
-        """Получить использование CPU сервера"""
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(f"{self.base_url}/metrics/servers/{server_name}/cpu")
-                
-                if response.status_code != 200:
-                    return None
+                    return []
                     
                 data = response.json()
-                return data.get('usage', 0.0)
+                return data.get('data', []) if isinstance(data, dict) else []
         except Exception as e:
-            print(f"Ошибка при получении CPU для {server_name}: {e}")
-            return None
+            print(f"Ошибка при получении Memory метрик: {e}")
+            return []
     
-    async def get_server_memory_usage(self, server_name: str) -> Optional[float]:
-        """Получить использование памяти сервера"""
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(f"{self.base_url}/metrics/servers/{server_name}/memory")
-                
-                if response.status_code != 200:
-                    return None
-                    
-                data = response.json()
-                return data.get('usage', 0.0)
-        except Exception as e:
-            print(f"Ошибка при получении памяти для {server_name}: {e}")
-            return None
-    
-    def _convert_to_service_status(self, metric_value: Optional[float]) -> ServiceStatus:
-        """Конвертировать значение метрики в статус сервиса"""
-        if metric_value is None:
+    def _determine_service_status(self, metrics: Dict[str, Any]) -> ServiceStatus:
+        """Определить статус сервиса на основе метрик"""
+        cpu_usage = metrics.get('cpu_usage', 0)
+        memory_usage = metrics.get('memory_usage', 0)
+        disk_usage = metrics.get('disk_usage', 0)
+        
+        # Если метрики недоступны (все нули), сервис не отвечает
+        if cpu_usage == 0 and memory_usage == 0:
             return "down"
         
-        # up{} метрика: 1 = работает, 0 = не работает
-        if metric_value == 1.0:
-            return "operational"
-        elif metric_value == 0.0:
-            return "down"
-        else:
+        # Критические значения - деградация
+        if cpu_usage > 90 or memory_usage > 90 or disk_usage > 90:
             return "degraded"
+        
+        # Предупреждения
+        if cpu_usage > 80 or memory_usage > 80 or disk_usage > 85:
+            return "maintenance"
+        
+        # Все хорошо
+        return "operational"
     
-    async def convert_servers_to_services(self, servers: List[Dict[str, Any]]) -> List[Service]:
-        """Конвертировать данные серверов из API в формат Service"""
+    def _map_server_name_to_category(self, server_name: str) -> str:
+        """Определить категорию сервиса по имени"""
+        name_lower = server_name.lower()
+        
+        if 'database' in name_lower or 'db' in name_lower:
+            return "Database"
+        elif 'sso' in name_lower or 'auth' in name_lower:
+            return "Authentication"
+        elif 'vpn' in name_lower or 'ipsec' in name_lower or 'firezone' in name_lower:
+            return "Network"
+        elif 'gitlab' in name_lower or 'git' in name_lower:
+            return "DevTools"
+        elif 'siem' in name_lower or 'wazuh' in name_lower:
+            return "Security"
+        elif 'ai' in name_lower:
+            return "Compute"
+        elif 'ops' in name_lower:
+            return "Operations"
+        elif 'proxy' in name_lower:
+            return "Network"
+        else:
+            return "Infrastructure"
+    
+    def _get_icon_for_category(self, category: str) -> str:
+        """Получить иконку для категории"""
+        icons = {
+            "Database": "database",
+            "Authentication": "shield",
+            "Network": "globe",
+            "DevTools": "git-branch",
+            "Security": "shield",
+            "Compute": "cpu",
+            "Operations": "server",
+            "Infrastructure": "server"
+        }
+        return icons.get(category, "server")
+    
+    async def convert_metrics_to_services(self, metrics_data: List[Dict[str, Any]]) -> List[Service]:
+        """Конвертировать метрики серверов в формат Service"""
         services = []
         
-        for server in servers:
-            # Получаем метрики сервера для определения статуса
-            server_name = server.get('name', server.get('instance', 'unknown'))
-            metrics = await self.get_server_metrics(server_name)
+        for metrics in metrics_data:
+            server_name = metrics.get('server_name', 'Unknown Server')
             
-            # Определяем статус
-            status: ServiceStatus = "loading"
-            if metrics:
-                up_value = metrics.get('up', metrics.get('status'))
-                status = self._convert_to_service_status(up_value)
+            # Определяем статус на основе метрик
+            status = self._determine_service_status(metrics)
             
-            # Парсим address и port
-            instance = server.get('instance', '')
-            address = instance.split(':')[0] if ':' in instance else instance
-            port = None
-            if ':' in instance:
-                try:
-                    port = int(instance.split(':')[1])
-                except:
-                    pass
+            # Определяем категорию
+            category = self._map_server_name_to_category(server_name)
             
+            # Создаем сервис
             service = Service(
-                id=server.get('id', f"srv-{server_name}"),
+                id=f"srv-{server_name.lower().replace(' ', '-')}",
                 name=server_name,
-                description=server.get('description', f'Сервер {server_name}'),
-                category=server.get('job', server.get('category', 'Server')),
-                region=server.get('region', server.get('environment', 'Production')),
+                description=f"{server_name} - CPU: {metrics.get('cpu_usage', 0):.1f}%, RAM: {metrics.get('memory_usage', 0):.1f}%, Disk: {metrics.get('disk_usage', 0):.1f}%",
+                category=category,
+                region="Production",
                 status=status,
-                type=server.get('type', 'Backend'),
-                icon=server.get('icon'),
-                address=address or server.get('address'),
-                port=port or server.get('port'),
-                updated_at=datetime.now()
+                type="Server",
+                icon=self._get_icon_for_category(category),
+                address=None,
+                port=None,
+                updated_at=datetime.fromisoformat(metrics['timestamp']) if 'timestamp' in metrics else datetime.now()
             )
             services.append(service)
         
         return services
+    
+    async def sync_services_from_api(self) -> List[Service]:
+        """Синхронизация сервисов из Monitoring API"""
+        print("🔄 Синхронизация с Monitoring API...")
+        
+        # Получаем метрики всех серверов
+        metrics_data = await self.get_all_servers_metrics()
+        
+        if not metrics_data:
+            print("⚠️  Нет данных от Monitoring API")
+            return []
+        
+        # Конвертируем в формат Service
+        services = await self.convert_metrics_to_services(metrics_data)
+        
+        print(f"✓ Синхронизировано {len(services)} сервисов")
+        return services
+
 
 # Создаем глобальный экземпляр клиента
 metrics_client = MetricsAPIClient()

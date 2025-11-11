@@ -61,9 +61,8 @@ async def get_services():
         api_available = await metrics_client.check_availability()
         
         if api_available:
-            # Получаем данные из внешнего API метрик
-            servers = await metrics_client.get_all_servers()
-            services = await metrics_client.convert_servers_to_services(servers)
+            # Получаем данные из Monitoring API
+            services = await metrics_client.sync_services_from_api()
             
             # Синхронизируем с локальным хранилищем
             for service in services:

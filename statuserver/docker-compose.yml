@@ -10,9 +10,15 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=5000
-      - METRICS_API_URL=${METRICS_API_URL:-http://localhost:8000}
+      - STORAGE_TYPE=database
+      - DATABASE_PATH=/app/data/services.db
+      - METRICS_API_URL=${METRICS_API_URL:-}
       - GRAFANA_URL=${GRAFANA_URL:-}
       - GRAFANA_API_TOKEN=${GRAFANA_API_TOKEN:-}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changeme}
+    volumes:
+      - ./data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/metrics-api/status"]

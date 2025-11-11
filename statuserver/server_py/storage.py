@@ -140,4 +140,24 @@ class MemStorage:
         self.server_metrics[metrics_id] = metrics
         return metrics
 
-storage = MemStorage()
+import os
+
+# Выбор хранилища
+def get_storage():
+    """Получить экземпляр хранилища"""
+    storage_type = os.getenv("STORAGE_TYPE", "database")
+    
+    if storage_type == "memory":
+        print("📝 In-memory хранилище")
+        return MemStorage()
+    else:
+        try:
+            from db_storage import DatabaseStorage
+            db_path = os.getenv("DATABASE_PATH", "data/services.db")
+            print(f"💾 Постоянное хранилище: {db_path}")
+            return DatabaseStorage(db_path)
+        except:
+            print("⚠️ Fallback to in-memory")
+            return MemStorage()
+
+storage = get_storage()

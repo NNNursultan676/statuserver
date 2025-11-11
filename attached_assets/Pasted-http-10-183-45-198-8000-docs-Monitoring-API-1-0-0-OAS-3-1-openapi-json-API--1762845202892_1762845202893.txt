@@ -1,0 +1,1571 @@
+http://10.183.45.198:8000/docs
+
+Monitoring API
+ 1.0.0 
+OAS 3.1
+/openapi.json
+API для сбора логов и метрик из Loki и Prometheus
+
+metrics
+
+
+
+GET
+/metrics/query
+Query Metrics
+
+Запрос метрик за период времени
+
+Parameters
+Try it out
+Name	Description
+query *
+string
+(query)
+PromQL запрос
+
+query
+start
+(query)
+Начальное время
+
+start
+end
+(query)
+Конечное время
+
+end
+step
+string
+(query)
+Шаг
+
+Default value : 15s
+
+15s
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "metric_name": "string",
+  "data": [
+    {
+      "timestamp": "2025-11-11T06:42:00.265Z",
+      "value": 0,
+      "metric": {
+        "additionalProp1": "string",
+        "additionalProp2": "string",
+        "additionalProp3": "string"
+      }
+    }
+  ]
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+
+GET
+/metrics/instant
+Instant Query
+
+Мгновенный запрос метрик
+
+Parameters
+Try it out
+Name	Description
+query *
+string
+(query)
+PromQL запрос
+
+query
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "metric_name": "string",
+  "data": [
+    {
+      "timestamp": "2025-11-11T06:44:32.926Z",
+      "value": 0,
+      "metric": {
+        "additionalProp1": "string",
+        "additionalProp2": "string",
+        "additionalProp3": "string"
+      }
+    }
+  ]
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+
+GET
+/metrics/available
+Get Available Metrics
+
+Получение списка доступных метрик
+
+Parameters
+Try it out
+No parameters
+
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+"string"
+
+GET
+/metrics/cpu/usage
+Get Cpu Usage
+
+Пример: Использование CPU
+
+Parameters
+Try it out
+No parameters
+
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+"string"
+
+
+GET
+/metrics/memory/usage
+Get Memory Usage
+
+Пример: Использование памяти
+
+Parameters
+Cancel
+No parameters
+
+Execute
+Clear
+Responses
+Curl
+
+curl -X 'GET' \
+  'http://10.183.45.198:8000/metrics/memory/usage' \
+  -H 'accept: application/json'
+Request URL
+http://10.183.45.198:8000/metrics/memory/usage
+Server response
+Code	Details
+200	
+Response body
+Download
+{
+  "metric_name": "(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100",
+  "data": [
+    {
+      "timestamp": "2025-11-11T06:50:04.565000",
+      "value": 62.01758561536182,
+      "metric": {
+        "instance": "10.128.0.7:9100",
+        "job": "wazuh-demo"
+      }
+    },
+    {
+      "timestamp": "2025-11-11T06:50:04.565000",
+      "value": 10.206425211899496,
+      "metric": {
+        "instance": "10.128.0.31:9100",
+        "job": "stage-db"
+      }
+    },
+    {
+      "timestamp": "2025-11-11T06:50:04.565000",
+      "value": 36.149122354053375,
+      "metric": {
+        "instance": "5.35.105.207:9100",
+        "job": "firezone-vpn"
+      }
+    },
+    {
+      "timestamp": "2025-11-11T06:50:04.565000",
+      "value": 79.05210532524642,
+      "metric": {
+        "instance": "94.131.84.28:9100",
+        "job": "ipsec-server"
+      }
+    },
+    {
+      "timestamp": "2025-11-11T06:50:04.565000",
+      "value": 38.30996972348093,
+      "metric": {
+        "instance": "10.128.0.21:9100",
+        "job": "production-db"
+      }
+    },
+    {
+      "timestamp": "2025-11-11T06:50:04.565000",
+      "value": 31.276264141104477,
+      "metric": {
+        "instance": "10.128.0.26:9100",
+        "job": "gitlab-vm"
+      }
+    },
+    {
+      "timestamp": "2025-11-11T06:50:04.565000",
+      "value": 45.25626282060601,
+      "metric": {
+        "instance": "10.128.0.38:9100",
+        "job": "siem-server"
+      }
+    },
+    {
+      "timestamp": "2025-11-11T06:50:04.565000",
+      "value": 11.46489954766591,
+      "metric": {
+        "instance": "10.128.0.40:9100",
+        "job": "ops-server"
+      }
+    },
+    {
+      "timestamp": "2025-11-11T06:50:04.565000",
+      "value": 33.85402217409961,
+      "metric": {
+        "instance": "10.128.0.85:9100",
+        "job": "ai-project-virtual-machine"
+      }
+    },
+    {
+      "timestamp": "2025-11-11T06:50:04.565000",
+      "value": 51.14019094493493,
+      "metric": {
+        "instance": "10.128.0.32:9100",
+        "job": "sso-server"
+      }
+    },
+    {
+      "timestamp": "2025-11-11T06:50:04.565000",
+      "value": 49.51465514918604,
+      "metric": {
+        "instance": "10.128.0.79:9100",
+        "job": "ai-test-environment"
+      }
+    },
+    {
+      "timestamp": "2025-11-11T06:50:04.565000",
+      "value": 47.97780523339489,
+      "metric": {
+        "instance": "10.128.0.67:9100",
+        "job": "demo-db-creditbroker"
+      }
+    }
+  ]
+}
+Response headers
+ content-length: 1715 
+ content-type: application/json 
+ date: Tue,11 Nov 2025 06:50:03 GMT 
+ server: uvicorn 
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+"string"
+
+GET
+/metrics/servers
+Get Servers
+
+Получение списка всех серверов и их статуса
+
+Parameters
+Cancel
+No parameters
+
+Execute
+Clear
+Responses
+Curl
+
+curl -X 'GET' \
+  'http://10.183.45.198:8000/metrics/servers' \
+  -H 'accept: application/json'
+Request URL
+http://10.183.45.198:8000/metrics/servers
+Server response
+Code	Details
+500
+Undocumented
+Error: Internal Server Error
+
+Response body
+Download
+{
+  "detail": "Failed to get servers status: Prometheus instant query failed: HTTPConnectionPool(host='10.128.0.38', port=9090): Max retries exceeded with url: /api/v1/query?query=up (Caused by ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x7d1f9578ca10>, 'Connection to 10.128.0.38 timed out. (connect timeout=10)'))"
+}
+Response headers
+ content-length: 335 
+ content-type: application/json 
+ date: Tue,11 Nov 2025 06:51:08 GMT 
+ server: uvicorn 
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "servers": [
+    {
+      "name": "string",
+      "job_name": "string",
+      "target": "string",
+      "status": "string"
+    }
+  ],
+  "total_count": 0
+}
+
+/metrics/servers/all
+Get All Servers Metrics
+
+Получение метрик для всех серверов
+
+Parameters
+Try it out
+No parameters
+
+Responses
+Curl
+
+curl -X 'GET' \
+  'http://10.183.45.198:8000/metrics/servers/all' \
+  -H 'accept: application/json'
+Request URL
+http://10.183.45.198:8000/metrics/servers/all
+Server response
+Code	Details
+200	
+Response body
+Download
+[
+  {
+    "server_name": "SIEM Server",
+    "cpu_usage": 1.17,
+    "memory_usage": 45.27,
+    "disk_usage": 30.29,
+    "load_average": 0.44,
+    "network_in": 5966.46,
+    "network_out": 102740.88,
+    "timestamp": "2025-11-11T05:35:38.217258"
+  },
+  {
+    "server_name": "OPS Server",
+    "cpu_usage": 18.33,
+    "memory_usage": 11.43,
+    "disk_usage": 52.59,
+    "load_average": 2.19,
+    "network_in": 0,
+    "network_out": 0,
+    "timestamp": "2025-11-11T05:35:38.437879"
+  },
+  {
+    "server_name": "AI Test Environment",
+    "cpu_usage": 1.15,
+    "memory_usage": 49.41,
+    "disk_usage": 70.41,
+    "load_average": 0,
+    "network_in": 4627.62,
+    "network_out": 18437.45,
+    "timestamp": "2025-11-11T05:35:38.647347"
+  },
+  {
+    "server_name": "IPSec Server",
+    "cpu_usage": 0.7,
+    "memory_usage": 79.28,
+    "disk_usage": 85.99,
+    "load_average": 0,
+    "network_in": 308251.54,
+    "network_out": 324770.78,
+    "timestamp": "2025-11-11T05:35:38.859404"
+  },
+  {
+    "server_name": "Stage Database",
+    "cpu_usage": 0.48,
+    "memory_usage": 10.21,
+    "disk_usage": 26.34,
+    "load_average": 0.05,
+    "network_in": 3753.74,
+    "network_out": 538.61,
+    "timestamp": "2025-11-11T05:35:39.066756"
+  },
+  {
+    "server_name": "Production Database",
+    "cpu_usage": 11.91,
+    "memory_usage": 37.35,
+    "disk_usage": 9.51,
+    "load_average": 7.36,
+    "network_in": 3752.17,
+    "network_out": 536.25,
+    "timestamp": "2025-11-11T05:35:39.276124"
+  },
+  {
+    "server_name": "Wazuh Demo",
+    "cpu_usage": 0.76,
+    "memory_usage": 62.07,
+    "disk_usage": 55.29,
+    "load_average": 0.04,
+    "network_in": 3.14,
+    "network_out": 0,
+    "timestamp": "2025-11-11T05:35:39.485711"
+  },
+  {
+    "server_name": "Firezone VPN",
+    "cpu_usage": 0.52,
+    "memory_usage": 36.03,
+    "disk_usage": 31.41,
+    "load_average": 0,
+    "network_in": 51936.22,
+    "network_out": 58289.57,
+    "timestamp": "2025-11-11T05:35:39.698867"
+  },
+  {
+    "server_name": "GitLab VM",
+    "cpu_usage": 2.61,
+    "memory_usage": 31.27,
+    "disk_usage": 23.48,
+    "load_average": 0,
+    "network_in": 0,
+    "network_out": 0,
+    "timestamp": "2025-11-11T05:35:39.912444"
+  },
+  {
+    "server_name": "SSO Server",
+    "cpu_usage": 1.34,
+    "memory_usage": 50.83,
+    "disk_usage": 14.25,
+    "load_average": 0.08,
+    "network_in": 384.84,
+    "network_out": 249.09,
+    "timestamp": "2025-11-11T05:35:40.132317"
+  },
+  {
+    "server_name": "Central Proxy",
+    "cpu_usage": 0,
+    "memory_usage": 0,
+    "disk_usage": 0,
+    "load_average": 0,
+    "network_in": 0,
+    "network_out": 0,
+    "timestamp": "2025-11-11T05:35:40.341241"
+  },
+  {
+    "server_name": "AI Project VM",
+    "cpu_usage": 0.75,
+    "memory_usage": 33.59,
+    "disk_usage": 14.26,
+    "load_average": 0,
+    "network_in": 0,
+    "network_out": 0,
+    "timestamp": "2025-11-11T05:35:40.552007"
+  },
+  {
+    "server_name": "Demo DB CreditBroker",
+    "cpu_usage": 0.45,
+    "memory_usage": 48.1,
+    "disk_usage": 16.25,
+    "load_average": 0.01,
+    "network_in": 312096.84,
+    "network_out": 169431.66,
+    "timestamp": "2025-11-11T05:35:40.757922"
+  }
+]
+Response headers
+ content-length: 2471 
+ content-type: application/json 
+ date: Tue,11 Nov 2025 05:35:37 GMT 
+ server: uvicorn 
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+[
+  {
+    "server_name": "string",
+    "cpu_usage": 0,
+    "memory_usage": 0,
+    "disk_usage": 0,
+    "load_average": 0,
+    "network_in": 0,
+    "network_out": 0,
+    "timestamp": "2025-11-11T06:52:28.720Z"
+  }
+]
+
+GET
+/metrics/servers/{server_name}
+Get Server Metrics
+
+Получение основных метрик для конкретного сервера
+
+Parameters
+Try it out
+Name	Description
+server_name *
+string
+(path)
+Имя сервера
+
+server_name
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "server_name": "string",
+  "cpu_usage": 0,
+  "memory_usage": 0,
+  "disk_usage": 0,
+  "load_average": 0,
+  "network_in": 0,
+  "network_out": 0,
+  "timestamp": "2025-11-11T07:01:47.723Z"
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/metrics/servers/{server_name}/{metric_type}
+Get Server Detailed Metrics
+
+Получение детальных метрик для сервера
+
+Parameters
+Try it out
+Name	Description
+server_name *
+string
+(path)
+Имя сервера
+
+server_name
+metric_type *
+string
+(path)
+Тип метрики: cpu, memory, disk, network, load
+
+metric_type
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "metric_name": "string",
+  "data": [
+    {
+      "timestamp": "2025-11-11T07:01:47.727Z",
+      "value": 0,
+      "metric": {
+        "additionalProp1": "string",
+        "additionalProp2": "string",
+        "additionalProp3": "string"
+      }
+    }
+  ]
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/metrics/servers/{server_name}/cpu/history
+Get Server Cpu History
+
+История использования CPU для сервера
+
+Parameters
+Try it out
+Name	Description
+server_name *
+string
+(path)
+Имя сервера
+
+server_name
+hours
+integer
+(query)
+Количество часов истории
+
+Default value : 1
+
+1
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+"string"
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/metrics/servers/{server_name}/memory/history
+Get Server Memory History
+
+История использования памяти для сервера
+
+Parameters
+Try it out
+Name	Description
+server_name *
+string
+(path)
+Имя сервера
+
+server_name
+hours
+integer
+(query)
+Количество часов истории
+
+Default value : 1
+
+1
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+"string"
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/metrics/database/servers/{server_name}
+Get Server Metrics From Db
+
+Получение метрик сервера из базы данных за период времени
+
+Parameters
+Try it out
+Name	Description
+server_name *
+string
+(path)
+Имя сервера
+
+server_name
+start
+(query)
+Начальное время
+
+start
+end
+(query)
+Конечное время
+
+end
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+[
+  {
+    "server_name": "string",
+    "time": "2025-11-11T07:01:47.739Z",
+    "cpu_usage": 0,
+    "memory_usage": 0,
+    "disk_usage": 0,
+    "load_average": 0,
+    "network_in": 0,
+    "network_out": 0
+  }
+]
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/metrics/database/period/morning
+Get Morning Metrics
+
+Получение метрик для периода 10:00 утра (утренний период)
+
+Parameters
+Cancel
+Name	Description
+target_date
+(query)
+Дата (по умолчанию - сегодня)
+
+target_date
+window_minutes
+integer
+(query)
+Окно в минутах вокруг времени 10:00
+
+30
+Execute
+Clear
+Responses
+Curl
+
+curl -X 'GET' \
+  'http://10.183.45.198:8000/metrics/database/period/morning?window_minutes=30' \
+  -H 'accept: application/json'
+Request URL
+http://10.183.45.198:8000/metrics/database/period/morning?window_minutes=30
+Server response
+Code	Details
+200	
+Response body
+Download
+{
+  "period": "morning",
+  "date": "2025-11-11",
+  "metrics": [],
+  "total_count": 0
+}
+Response headers
+ content-length: 69 
+ content-type: application/json 
+ date: Tue,11 Nov 2025 06:54:26 GMT 
+ server: uvicorn 
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "period": "string",
+  "date": "string",
+  "metrics": [
+    {
+      "server_name": "string",
+      "time": "2025-11-11T07:01:47.744Z",
+      "cpu_usage": 0,
+      "memory_usage": 0,
+      "disk_usage": 0,
+      "load_average": 0,
+      "network_in": 0,
+      "network_out": 0
+    }
+  ],
+  "total_count": 0
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/metrics/database/period/afternoon
+Get Afternoon Metrics
+
+Получение метрик для периода 15:00 дня (дневной период)
+
+Parameters
+Try it out
+Name	Description
+target_date
+(query)
+Дата (по умолчанию - сегодня)
+
+target_date
+window_minutes
+integer
+(query)
+Окно в минутах вокруг времени 15:00
+
+Default value : 30
+
+30
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "period": "string",
+  "date": "string",
+  "metrics": [
+    {
+      "server_name": "string",
+      "time": "2025-11-11T07:01:47.748Z",
+      "cpu_usage": 0,
+      "memory_usage": 0,
+      "disk_usage": 0,
+      "load_average": 0,
+      "network_in": 0,
+      "network_out": 0
+    }
+  ],
+  "total_count": 0
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/metrics/database/period/evening
+Get Evening Metrics
+
+Получение метрик для периода 17:00 вечера (вечерний период)
+
+Parameters
+Cancel
+Name	Description
+target_date
+(query)
+Дата (по умолчанию - сегодня)
+
+target_date
+window_minutes
+integer
+(query)
+Окно в минутах вокруг времени 17:00
+
+30
+Execute
+Clear
+Responses
+Curl
+
+curl -X 'GET' \
+  'http://10.183.45.198:8000/metrics/database/period/evening?window_minutes=30' \
+  -H 'accept: application/json'
+Request URL
+http://10.183.45.198:8000/metrics/database/period/evening?window_minutes=30
+Server response
+Code	Details
+200	
+Response body
+Download
+{
+  "period": "evening",
+  "date": "2025-11-11",
+  "metrics": [],
+  "total_count": 0
+}
+Response headers
+ content-length: 69 
+ content-type: application/json 
+ date: Tue,11 Nov 2025 06:55:38 GMT 
+ server: uvicorn 
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "period": "string",
+  "date": "string",
+  "metrics": [
+    {
+      "server_name": "string",
+      "time": "2025-11-11T07:01:47.753Z",
+      "cpu_usage": 0,
+      "memory_usage": 0,
+      "disk_usage": 0,
+      "load_average": 0,
+      "network_in": 0,
+      "network_out": 0
+    }
+  ],
+  "total_count": 0
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/metrics/database/period/all
+Get All Periods Metrics
+
+Получение метрик для всех трех периодов (10:00, 15:00, 17:00) за один запрос
+
+Parameters
+Try it out
+Name	Description
+target_date
+(query)
+Дата (по умолчанию - сегодня)
+
+target_date
+window_minutes
+integer
+(query)
+Окно в минутах вокруг каждого времени
+
+Default value : 30
+
+30
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+Response Get All Periods Metrics Metrics Database Period All GetCollapse allarray<object>
+ItemsExpand allobject
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+logs
+
+
+GET
+/logs/query
+Query Logs
+
+Запрос логов за период времени
+
+Parameters
+Try it out
+Name	Description
+query *
+string
+(query)
+LogQL запрос
+
+query
+start
+(query)
+Начальное время
+
+start
+end
+(query)
+Конечное время
+
+end
+limit
+integer
+(query)
+Лимит записей
+
+Default value : 1000
+
+1000
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "logs": [
+    {
+      "timestamp": "2025-11-11T07:01:47.763Z",
+      "line": "string",
+      "labels": {
+        "additionalProp1": "string",
+        "additionalProp2": "string",
+        "additionalProp3": "string"
+      }
+    }
+  ],
+  "total_count": 0
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+
+GET
+/logs/errors
+Get Error Logs
+
+Пример: Логи с ошибками
+
+Parameters
+Try it out
+Name	Description
+app
+string
+(query)
+Имя приложения
+
+Default value : myapp
+
+myapp
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+"string"
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+HTTPValidationErrorCollapse allobject
+detailExpand allarray<object>
+No links
+
+GET
+/logs/application/{app_name}
+Get App Logs
+
+utility
+
+
+POST
+/utility/check_availability
+Check Availability
+
+Проверка доступности HTTP/HTTPS ресурса
+
+Parameters
+Cancel
+No parameters
+
+Request body
+
+application/json
+{
+  "url": "string",
+  "method": "GET",
+  "timeout": 10
+}
+Execute
+Clear
+Responses
+Curl
+
+curl -X 'POST' \
+  'http://10.183.45.198:8000/utility/check_availability' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "url": "string",
+  "method": "GET",
+  "timeout": 10
+}'
+Request URL
+http://10.183.45.198:8000/utility/check_availability
+Server response
+Code	Details
+200	
+Response body
+Download
+{
+  "success": false,
+  "url": "http://string",
+  "final_url": null,
+  "method": "GET",
+  "status_code": null,
+  "reason": null,
+  "elapsed_ms": 5.18,
+  "error": "HTTPConnectionPool(host='string', port=80): Max retries exceeded with url: / (Caused by NameResolutionError(\"<urllib3.connection.HTTPConnection object at 0x7d1f957cf590>: Failed to resolve 'string' ([Errno -3] Temporary failure in name resolution)\"))"
+}
+Response headers
+ access-control-allow-credentials: true 
+ access-control-allow-origin: * 
+ content-length: 385 
+ content-type: application/json 
+ date: Tue,11 Nov 2025 06:59:32 GMT 
+ server: uvicorn 
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "success": true,
+  "url": "string",
+  "final_url": "string",
+  "method": "string",
+  "status_code": 0,
+  "reason": "string",
+  "elapsed_ms": 0,
+  "error": "string"
+}
+No links
+422	
+Validation Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "detail": [
+    {
+      "loc": [
+        "string",
+        0
+      ],
+      "msg": "string",
+      "type": "string"
+    }
+  ]
+}
+No links
+default
+
+
+GET
+/
+Root
+
+
+GET
+/health
+Health Check
+
+Проверка здоровья сервиса и подключений
+
+Parameters
+Try it out
+No parameters
+
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "status": "string",
+  "prometheus": true,
+  "loki": true
+}
+No links
+
+GET
+/test/metrics
+Test Metrics
+
+Тестовые метрики
+
+Parameters
+Try it out
+No parameters
+
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+"string"
+No links
+
+GET
+/test/logs
+Test Logs
+
+Тестовые логи
+
+Parameters
+Try it out
+No parameters
+
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+"string"
+No links
+
+GET
+/status
+Status
+
+Детальный статус сервиса
+
+Parameters
+Try it out
+No parameters
+
+Responses
+Code	Description	Links
+200	
+Successful Response
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+"string"
+No links
+
+Schemas
+
+
+
+

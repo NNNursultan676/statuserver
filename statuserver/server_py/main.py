@@ -60,7 +60,7 @@ async def sync_metrics_periodically():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        await storage.connect()
+        # DatabaseStorage не требует connect() - SQLite инициализируется при создании
         await storage.seed_data() # Ensure seed_data is called
         print("Storage initialized and data seeded")
 
@@ -106,7 +106,7 @@ async def lifespan(app: FastAPI):
 
     finally:
         print("Application shutting down")
-        await storage.disconnect()
+        # DatabaseStorage не требует disconnect() - SQLite закрывает соединения автоматически
 
 
 app = FastAPI(lifespan=lifespan)

@@ -5,11 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Star, RefreshCw, BarChart3, AlertCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Search, Star, RefreshCw, BarChart3, AlertCircle, Globe } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useAvailability } from "@/hooks/use-availability";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -17,6 +20,11 @@ export default function Dashboard() {
   const [showFavorites, setShowFavorites] = useState(false);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [showUnavailableDialog, setShowUnavailableDialog] = useState(false);
+  const [showCheckDialog, setShowCheckDialog] = useState(false);
+  const [checkUrl, setCheckUrl] = useState("");
+  const [checkMethod, setCheckMethod] = useState("GET");
+  const [checkTimeout, setCheckTimeout] = useState(10);
+  const [checkResult, setCheckResult] = useState<any>(null);
 
   const { data: services = [], isLoading } = useQuery<Service[]>({
     queryKey: ["/api/services"],
@@ -25,7 +33,8 @@ export default function Dashboard() {
   });
 
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
-  const { checkAvailability } = useAvailability();
+  const { checkAvailability, checkUrlAvailability, isCheckingUrl } = useAvailability();
+  const { toast } = useToast();
 
   const environments = Array.from(new Set(services.map(s => s.region))).sort();
 
@@ -44,6 +53,41 @@ export default function Dashboard() {
       }
     }
     setCheckingAvailability(false);
+  };
+
+  const handleCheckUrlSubmit = async () => {
+    if (!checkUrl) {
+      toast({
+        title: "Ошибка",
+        description: "Введите URL для проверки",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const result = await checkUrlAvailability(checkUrl, checkMethod, checkTimeout);
+      setCheckResult(result);
+      
+      if (result.success) {
+        toast({
+          title: "Успешно",
+          description: `Сервис доступен (${result.status_code}) - ${result.elapsed_ms.toFixed(2)}ms`,
+        });
+      } else {
+        toast({
+          title: "Недоступен",
+          description: result.error || "Сервис недоступен",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось проверить доступность",
+        variant: "destructive",
+      });
+    }
   };
 
   const filteredServices = services.filter((service) => {
@@ -103,6 +147,111 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 md:space-y-8">
+      <Dialog open={showCheckDialog} onOpenChange={(open) => {
+        setShowCheckDialog(open);
+        if (!open) {
+          setCheckResult(null);
+          setCheckUrl("");
+          setCheckMethod("GET");
+          setCheckTimeout(10);
+        }
+      }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Globe className="w-5 h-5 text-primary" />
+              Проверить доступность
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="check-url">URL</Label>
+              <Input
+                id="check-url"
+                placeholder="https://example.com"
+                value={checkUrl}
+                onChange={(e) => setCheckUrl(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="check-method">Метод</Label>
+                <Select value={checkMethod} onValueChange={setCheckMethod}>
+                  <SelectTrigger id="check-method">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="GET">GET</SelectItem>
+                    <SelectItem value="POST">POST</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="check-timeout">Таймаут (сек)</Label>
+                <Input
+                  id="check-timeout"
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={checkTimeout}
+                  onChange={(e) => setCheckTimeout(parseInt(e.target.value) || 10)}
+                />
+              </div>
+            </div>
+
+            {checkResult && (
+              <Card className="p-4 mt-4">
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="font-medium">Статус:</span>
+                    <Badge variant={checkResult.success ? "default" : "destructive"}>
+                      {checkResult.success ? "Доступен" : "Недоступен"}
+                    </Badge>
+                  </div>
+                  {checkResult.status_code && (
+                    <div className="flex justify-between">
+                      <span className="font-medium">HTTP код:</span>
+                      <span>{checkResult.status_code}</span>
+                    </div>
+                  )}
+                  {checkResult.reason && (
+                    <div className="flex justify-between">
+                      <span className="font-medium">Причина:</span>
+                      <span>{checkResult.reason}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="font-medium">Время ответа:</span>
+                    <span>{checkResult.elapsed_ms.toFixed(2)} мс</span>
+                  </div>
+                  {checkResult.final_url && checkResult.final_url !== checkResult.url && (
+                    <div className="flex justify-between">
+                      <span className="font-medium">Перенаправлен:</span>
+                      <span className="text-xs truncate max-w-xs">{checkResult.final_url}</span>
+                    </div>
+                  )}
+                  {checkResult.error && (
+                    <div className="mt-2 p-2 bg-destructive/10 rounded text-xs">
+                      <span className="font-medium text-destructive">Ошибка: </span>
+                      {checkResult.error}
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCheckDialog(false)}>
+              Закрыть
+            </Button>
+            <Button onClick={handleCheckUrlSubmit} disabled={isCheckingUrl}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${isCheckingUrl ? 'animate-spin' : ''}`} />
+              Проверить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showUnavailableDialog} onOpenChange={setShowUnavailableDialog}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -324,15 +473,25 @@ export default function Dashboard() {
                 className="pl-10"
               />
             </div>
-            <Button
-              variant="outline"
-              onClick={handleCheckAll}
-              disabled={checkingAvailability}
-              className="w-full sm:w-auto"
-            >
-              <RefreshCw className={`mr-2 h-4 w-4 ${checkingAvailability ? 'animate-spin' : ''}`} />
-              Проверить доступность
-            </Button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button
+                variant="outline"
+                onClick={() => setShowCheckDialog(true)}
+                className="flex-1 sm:flex-initial"
+              >
+                <Globe className="mr-2 h-4 w-4" />
+                Проверить URL
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleCheckAll}
+                disabled={checkingAvailability}
+                className="flex-1 sm:flex-initial"
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${checkingAvailability ? 'animate-spin' : ''}`} />
+                Проверить все
+              </Button>
+            </div>
           </div>
 
           <div className="flex flex-nowrap gap-2 items-center overflow-x-auto pb-2 -mx-1 px-1">

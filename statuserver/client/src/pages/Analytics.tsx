@@ -3,8 +3,8 @@ import { Service, Incident, ServerMetrics } from "@shared/schema";
 import { MetricCard } from "@/components/MetricCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { Activity, AlertCircle, Clock, Server, Download, Calendar as CalendarIcon, FileSpreadsheet, FileText, Cpu, HardDrive } from "lucide-react";
+import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
+import { Activity, AlertCircle, Clock, Server, Download, Calendar as CalendarIcon, FileSpreadsheet, FileText, Cpu, HardDrive, TrendingUp, TrendingDown, AlertTriangle, BarChart3 } from "lucide-react";
 import { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -33,7 +33,7 @@ export default function Analytics() {
 
   const { data: allMetrics = [] } = useQuery<ServerMetrics[]>({
     queryKey: ["/api/server-metrics"],
-    refetchInterval: 3000, // Auto-refresh every 3 seconds
+    refetchInterval: 1000,
     refetchIntervalInBackground: true,
   });
 
@@ -72,15 +72,79 @@ export default function Analytics() {
     filterByDate(new Date(metric.timestamp))
   );
 
+  // Анализ нагрузки серверов
+  const serverLoadAnalysis = services.map((service) => {
+    const serviceMetrics = filteredMetrics.filter((m) => m.serviceId === service.id);
+    const avgCpu = serviceMetrics.length > 0
+      ? serviceMetrics.reduce((sum, m) => sum + m.cpuUsage, 0) / serviceMetrics.length
+      : 0;
+    const avgRam = serviceMetrics.length > 0
+      ? serviceMetrics.reduce((sum, m) => sum + m.ramUsage, 0) / serviceMetrics.length
+      : 0;
+    const avgDisk = serviceMetrics.length > 0
+      ? serviceMetrics.reduce((sum, m) => sum + m.diskUsage, 0) / serviceMetrics.length
+      : 0;
+    const maxCpu = serviceMetrics.length > 0
+      ? Math.max(...serviceMetrics.map(m => m.cpuUsage))
+      : 0;
+    const maxRam = serviceMetrics.length > 0
+      ? Math.max(...serviceMetrics.map(m => m.ramUsage))
+      : 0;
+
+    // Подсчет инцидентов для этого сервиса
+    const serviceIncidents = incidents.filter(inc => inc.serviceId === service.id);
+    const downtime = serviceIncidents.filter(inc => inc.severity === "critical").length;
+
+    return {
+      name: service.name,
+      shortName: service.name.substring(0, 15),
+      avgCpu: Number(avgCpu.toFixed(1)),
+      avgRam: Number(avgRam.toFixed(1)),
+      avgDisk: Number(avgDisk.toFixed(1)),
+      maxCpu: Number(maxCpu.toFixed(1)),
+      maxRam: Number(maxRam.toFixed(1)),
+      totalLoad: Number(((avgCpu + avgRam + avgDisk) / 3).toFixed(1)),
+      incidents: serviceIncidents.length,
+      downtime,
+      stability: serviceMetrics.length > 0 ? Number((100 - (downtime / serviceMetrics.length * 100)).toFixed(1)) : 100,
+    };
+  }).sort((a, b) => b.totalLoad - a.totalLoad);
+
+  // Топ 5 самых нагруженных серверов
+  const topLoadedServers = serverLoadAnalysis.slice(0, 5);
+
+  // Топ 5 наименее нагруженных серверов
+  const leastLoadedServers = [...serverLoadAnalysis].reverse().slice(0, 5);
+
+  // Топ 5 самых стабильных серверов
+  const mostStableServers = [...serverLoadAnalysis].sort((a, b) => b.stability - a.stability).slice(0, 5);
+
+  // Топ 5 самых нестабильных серверов
+  const leastStableServers = [...serverLoadAnalysis].sort((a, b) => a.stability - b.stability).slice(0, 5);
+
+  // Radar chart data для комплексного анализа топ серверов
+  const radarData = topLoadedServers.map(server => ({
+    server: server.shortName,
+    CPU: server.avgCpu,
+    RAM: server.avgRam,
+    Disk: server.avgDisk,
+    Load: server.totalLoad,
+  }));
+
+  // Статистика падений по серверам
+  const downtimeStats = serverLoadAnalysis.map(server => ({
+    name: server.shortName,
+    incidents: server.incidents,
+    critical: server.downtime,
+  })).filter(s => s.incidents > 0).sort((a, b) => b.critical - a.critical);
+
   const exportToPDF = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
 
-    // Title
     doc.setFontSize(16);
-    doc.text("Status Report", pageWidth / 2, 15, { align: "center" });
+    doc.text("Complete Services Analytics Report", pageWidth / 2, 15, { align: "center" });
 
-    // Date range
     doc.setFontSize(8);
     const rangeText = range
       ? `${format(range.start, "MMM d, yyyy")} - ${format(range.end, "MMM d, yyyy")}`
@@ -90,283 +154,348 @@ export default function Analytics() {
 
     let yPos = 33;
 
-    // Summary metrics - compact
+    // Summary metrics
     autoTable(doc, {
       startY: yPos,
-      head: [["Uptime", "Services", "Active Inc.", "MTTR"]],
-      body: [[`${uptimePercentage}%`, `${operationalServices}/${totalServices}`, `${activeIncidents}`, `${mttr}m`]],
-      theme: "grid",
-      headStyles: { fillColor: [66, 139, 202], fontSize: 8 },
-      bodyStyles: { fontSize: 8 },
-      margin: { left: 14, right: 14 },
-    });
-
-    yPos = (doc as any).lastAutoTable.finalY + 6;
-
-    // Server Metrics - compact
-    const serverMetricsData = services.slice(0, 5).map((service) => {
-      const serviceMetrics = filteredMetrics.filter((m) => m.serviceId === service.id);
-      const avgCpu = serviceMetrics.length > 0
-        ? (serviceMetrics.reduce((sum, m) => sum + m.cpuUsage, 0) / serviceMetrics.length).toFixed(0)
-        : "-";
-      const avgRam = serviceMetrics.length > 0
-        ? (serviceMetrics.reduce((sum, m) => sum + m.ramUsage, 0) / serviceMetrics.length).toFixed(0)
-        : "-";
-      const avgDisk = serviceMetrics.length > 0
-        ? (serviceMetrics.reduce((sum, m) => sum + m.diskUsage, 0) / serviceMetrics.length).toFixed(0)
-        : "-";
-
-      return [
-        service.name.substring(0, 20),
-        serviceMetrics.length > 0 ? format(new Date(serviceMetrics[serviceMetrics.length - 1].timestamp), "MMM d HH:mm") : "-",
-        avgCpu !== "-" ? `${avgCpu}%` : avgCpu,
-        avgRam !== "-" ? `${avgRam}%` : avgRam,
-        avgDisk !== "-" ? `${avgDisk}%` : avgDisk,
-      ];
-    });
-
-    doc.setFontSize(10);
-    doc.text("Server Metrics", 14, yPos);
-    yPos += 5;
-
-    autoTable(doc, {
-      startY: yPos,
-      head: [["Service", "Updated", "CPU", "RAM", "Disk"]],
-      body: serverMetricsData,
+      head: [["Uptime", "Total Services", "Operational", "Active Inc.", "MTTR", "Degraded", "Down"]],
+      body: [[
+        `${uptimePercentage}%`, 
+        `${totalServices}`,
+        `${operationalServices}`,
+        `${activeIncidents}`, 
+        `${mttr}m`,
+        `${statusCounts.degraded}`,
+        `${statusCounts.down}`
+      ]],
       theme: "grid",
       headStyles: { fillColor: [66, 139, 202], fontSize: 7 },
       bodyStyles: { fontSize: 7 },
       margin: { left: 14, right: 14 },
     });
 
-    yPos = (doc as any).lastAutoTable.finalY + 6;
+    yPos = (doc as any).lastAutoTable.finalY + 8;
 
-    // GitLab Incidents
-    const gitlabIncidents = incidents
-      .filter((inc) => {
-        const service = services.find((s) => s.id === inc.serviceId);
-        return service?.category === "Infrastructure" || service?.name.toLowerCase().includes("git");
-      })
-      .slice(0, 5)
-      .map((incident) => {
-        const service = services.find((s) => s.id === incident.serviceId);
-        return [
-          format(new Date(incident.startedAt), "MMM d HH:mm"),
-          service?.name.substring(0, 15) || "-",
-          incident.title.substring(0, 20),
-          incident.status === "resolved" ? "✓" : "-",
-          (incident.description || incident.severity).substring(0, 15),
-        ];
-      });
-
+    // Services by Category
     doc.setFontSize(10);
-    doc.text("GitLab", 14, yPos);
+    doc.text("Services Distribution by Category", 14, yPos);
     yPos += 5;
 
-    autoTable(doc, {
-      startY: yPos,
-      head: [["Time", "Project", "Total", "Done", "Reason"]],
-      body: gitlabIncidents.length > 0 ? gitlabIncidents : [["No data", "-", "-", "-", "-"]],
-      theme: "grid",
-      headStyles: { fillColor: [66, 139, 202], fontSize: 7 },
-      bodyStyles: { fontSize: 7 },
-      margin: { left: 14, right: 14 },
-    });
-
-    yPos = (doc as any).lastAutoTable.finalY + 6;
-
-    // S3 Storage
-    const s3Data = services
-      .filter((s) => s.category === "Infrastructure" || s.name.toLowerCase().includes("storage") || s.name.toLowerCase().includes("s3"))
-      .slice(0, 5)
-      .map((service) => {
-        const serviceMetrics = filteredMetrics.filter((m) => m.serviceId === service.id);
-        const latestMetric = serviceMetrics[serviceMetrics.length - 1];
-        const avgDisk = serviceMetrics.length > 0
-          ? (serviceMetrics.reduce((sum, m) => sum + m.diskUsage, 0) / serviceMetrics.length)
-          : 0;
-
-        const quota = 100;
-        const used = avgDisk;
-        const free = quota - used;
-
-        return [
-          latestMetric ? format(new Date(latestMetric.timestamp), "MMM d HH:mm") : "-",
-          service.name.substring(0, 15),
-          `${quota.toFixed(0)}%`,
-          `${used.toFixed(0)}%`,
-          `${free.toFixed(0)}%`,
-        ];
-      });
-
-    doc.setFontSize(10);
-    doc.text("S3 Storage", 14, yPos);
-    yPos += 5;
-
-    autoTable(doc, {
-      startY: yPos,
-      head: [["Time", "Name", "Quota", "Used", "Free"]],
-      body: s3Data.length > 0 ? s3Data : [["No data", "-", "-", "-", "-"]],
-      theme: "grid",
-      headStyles: { fillColor: [66, 139, 202], fontSize: 7 },
-      bodyStyles: { fontSize: 7 },
-      margin: { left: 14, right: 14 },
-    });
-
-    yPos = (doc as any).lastAutoTable.finalY + 6;
-
-    // Services Overview - compact
-    const servicesData = services.slice(0, 8).map((s) => [
-      s.name.substring(0, 25),
-      s.category.substring(0, 12),
-      s.status,
+    const categoryData = Object.entries(categoryDistribution).map(([name, value]) => [
+      name,
+      value.toString(),
     ]);
 
-    doc.setFontSize(10);
-    doc.text("Services", 14, yPos);
-    yPos += 5;
-
     autoTable(doc, {
       startY: yPos,
-      head: [["Name", "Category", "Status"]],
-      body: servicesData,
+      head: [["Category", "Count"]],
+      body: categoryData,
       theme: "grid",
-      headStyles: { fillColor: [66, 139, 202], fontSize: 7 },
+      headStyles: { fillColor: [102, 126, 234], fontSize: 7 },
       bodyStyles: { fontSize: 7 },
       margin: { left: 14, right: 14 },
     });
 
-    doc.save(`status-report-${new Date().toISOString().split("T")[0]}.pdf`);
+    yPos = (doc as any).lastAutoTable.finalY + 8;
+
+    // Services by Type
+    doc.setFontSize(10);
+    doc.text("Services Distribution by Type", 14, yPos);
+    yPos += 5;
+
+    const typeData = Object.entries(typeStats).map(([type, count]) => [
+      type,
+      count.toString(),
+    ]);
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [["Type", "Count"]],
+      body: typeData,
+      theme: "grid",
+      headStyles: { fillColor: [76, 175, 80], fontSize: 7 },
+      bodyStyles: { fontSize: 7 },
+      margin: { left: 14, right: 14 },
+    });
+
+    // New Page for Server Load Analysis
+    doc.addPage();
+    yPos = 20;
+
+    // Top Loaded Servers
+    doc.setFontSize(12);
+    doc.text("Top 10 Most Loaded Servers", 14, yPos);
+    yPos += 5;
+
+    const topLoadedData = topLoadedServers.slice(0, 10).map(s => [
+      s.name.substring(0, 25),
+      `${s.avgCpu}%`,
+      `${s.avgRam}%`,
+      `${s.avgDisk}%`,
+      `${s.totalLoad}%`,
+      `${s.incidents}`,
+      `${s.stability}%`,
+    ]);
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [["Service", "CPU", "RAM", "Disk", "Load", "Inc.", "Stab."]],
+      body: topLoadedData,
+      theme: "grid",
+      headStyles: { fillColor: [220, 53, 69], fontSize: 6 },
+      bodyStyles: { fontSize: 6 },
+      margin: { left: 14, right: 14 },
+    });
+
+    yPos = (doc as any).lastAutoTable.finalY + 8;
+
+    // Least Loaded Servers
+    doc.setFontSize(12);
+    doc.text("Top 10 Least Loaded Servers", 14, yPos);
+    yPos += 5;
+
+    const leastLoadedData = leastLoadedServers.slice(0, 10).map(s => [
+      s.name.substring(0, 25),
+      `${s.avgCpu}%`,
+      `${s.avgRam}%`,
+      `${s.avgDisk}%`,
+      `${s.totalLoad}%`,
+      `${s.incidents}`,
+      `${s.stability}%`,
+    ]);
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [["Service", "CPU", "RAM", "Disk", "Load", "Inc.", "Stab."]],
+      body: leastLoadedData,
+      theme: "grid",
+      headStyles: { fillColor: [40, 167, 69], fontSize: 6 },
+      bodyStyles: { fontSize: 6 },
+      margin: { left: 14, right: 14 },
+    });
+
+    // New Page for All Services Details
+    doc.addPage();
+    yPos = 20;
+
+    doc.setFontSize(12);
+    doc.text("Complete Services Details", 14, yPos);
+    yPos += 5;
+
+    const allServicesData = serverLoadAnalysis.map(s => [
+      s.name.substring(0, 20),
+      s.shortName.substring(0, 10),
+      `${s.avgCpu}%`,
+      `${s.avgRam}%`,
+      `${s.avgDisk}%`,
+      `${s.totalLoad}%`,
+      `${s.incidents}`,
+      `${s.downtime}`,
+      `${s.stability}%`,
+    ]);
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [["Name", "Short", "CPU", "RAM", "Disk", "Load", "Inc", "Down", "Stab"]],
+      body: allServicesData,
+      theme: "grid",
+      headStyles: { fillColor: [63, 81, 181], fontSize: 5 },
+      bodyStyles: { fontSize: 5 },
+      margin: { left: 10, right: 10 },
+    });
+
+    doc.save(`complete-analytics-${new Date().toISOString().split("T")[0]}.pdf`);
   };
 
   const exportToJSON = () => {
-    const avgMetrics = services.map((service) => {
-      const serviceMetrics = filteredMetrics.filter((m) => m.serviceId === service.id);
-      return {
-        serviceId: service.id,
-        serviceName: service.name,
-        avgCpu: serviceMetrics.length > 0
-          ? (serviceMetrics.reduce((sum, m) => sum + m.cpuUsage, 0) / serviceMetrics.length).toFixed(1)
-          : null,
-        avgRam: serviceMetrics.length > 0
-          ? (serviceMetrics.reduce((sum, m) => sum + m.ramUsage, 0) / serviceMetrics.length).toFixed(1)
-          : null,
-        avgDisk: serviceMetrics.length > 0
-          ? (serviceMetrics.reduce((sum, m) => sum + m.diskUsage, 0) / serviceMetrics.length).toFixed(1)
-          : null,
-      };
-    });
-
     const data = {
-      dateRange: range
-        ? { from: format(range.start, "yyyy-MM-dd"), to: format(range.end, "yyyy-MM-dd") }
-        : "all",
-      generatedAt: new Date().toISOString(),
-      services,
-      incidents,
-      averageMetrics: avgMetrics,
-      statistics: {
+      reportMetadata: {
+        title: "Complete Services Analytics Report",
+        dateRange: range
+          ? { from: format(range.start, "yyyy-MM-dd"), to: format(range.end, "yyyy-MM-dd") }
+          : "all",
+        generatedAt: new Date().toISOString(),
+        totalServicesAnalyzed: services.length,
+        totalIncidents: incidents.length,
+      },
+      summaryStatistics: {
         totalServices,
         operationalServices,
+        degradedServices: statusCounts.degraded,
+        downServices: statusCounts.down,
+        maintenanceServices: statusCounts.maintenance,
+        loadingServices: statusCounts.loading,
         uptimePercentage,
         activeIncidents,
+        resolvedIncidents: incidents.filter(i => i.status === "resolved").length,
         mttr,
       },
+      distributionAnalysis: {
+        byCategory: categoryDistribution,
+        byType: typeStats,
+        byEnvironment: environmentStats,
+        byStatus: {
+          operational: statusCounts.operational,
+          degraded: statusCounts.degraded,
+          down: statusCounts.down,
+          maintenance: statusCounts.maintenance,
+          loading: statusCounts.loading,
+        },
+      },
+      loadAnalysis: {
+        top10MostLoaded: topLoadedServers.slice(0, 10),
+        top10LeastLoaded: leastLoadedServers.slice(0, 10),
+        top10MostStable: mostStableServers.slice(0, 10),
+        top10LeastStable: leastStableServers.slice(0, 10),
+      },
+      downtimeAnalysis: {
+        statisticsByServer: downtimeStats,
+        totalCriticalIncidents: downtimeStats.reduce((sum, s) => sum + s.critical, 0),
+        totalIncidents: downtimeStats.reduce((sum, s) => sum + s.incidents, 0),
+      },
+      completeServerAnalysis: serverLoadAnalysis.map(server => ({
+        ...server,
+        serviceDetails: services.find(s => s.name === server.name),
+      })),
+      allServices: services.map(service => {
+        const analysis = serverLoadAnalysis.find(s => s.name === service.name);
+        return {
+          ...service,
+          performanceMetrics: analysis ? {
+            avgCpu: analysis.avgCpu,
+            avgRam: analysis.avgRam,
+            avgDisk: analysis.avgDisk,
+            totalLoad: analysis.totalLoad,
+            maxCpu: analysis.maxCpu,
+            maxRam: analysis.maxRam,
+            incidents: analysis.incidents,
+            downtime: analysis.downtime,
+            stability: analysis.stability,
+          } : null,
+        };
+      }),
+      allIncidents: incidents.map(inc => ({
+        ...inc,
+        serviceName: getServiceName(inc.serviceId),
+      })),
+      metricsData: filteredMetrics.length > 0 ? {
+        totalDataPoints: filteredMetrics.length,
+        averages: {
+          cpu: (filteredMetrics.reduce((sum, m) => sum + m.cpuUsage, 0) / filteredMetrics.length).toFixed(2),
+          ram: (filteredMetrics.reduce((sum, m) => sum + m.ramUsage, 0) / filteredMetrics.length).toFixed(2),
+          disk: (filteredMetrics.reduce((sum, m) => sum + m.diskUsage, 0) / filteredMetrics.length).toFixed(2),
+        },
+        peaks: {
+          cpu: Math.max(...filteredMetrics.map(m => m.cpuUsage)).toFixed(2),
+          ram: Math.max(...filteredMetrics.map(m => m.ramUsage)).toFixed(2),
+          disk: Math.max(...filteredMetrics.map(m => m.diskUsage)).toFixed(2),
+        },
+      } : null,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `status-report-${new Date().toISOString().split("T")[0]}.json`;
+    a.download = `complete-analytics-${new Date().toISOString().split("T")[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const exportToCSV = () => {
     const csvRows = [];
-    
-    // Header
-    csvRows.push("Status Report");
+
+    csvRows.push("Complete Services Analytics Report");
     csvRows.push(`Generated;${new Date().toLocaleString()}`);
     csvRows.push(`Date Range;${range ? `${format(range.start, "MMM d, yyyy")} - ${format(range.end, "MMM d, yyyy")}` : "All Time"}`);
     csvRows.push("");
 
-    // Summary
-    csvRows.push("Summary");
+    // Summary Statistics
+    csvRows.push("Summary Statistics");
     csvRows.push("Metric;Value");
-    csvRows.push(`Uptime;${uptimePercentage}%`);
-    csvRows.push(`Operational Services;${operationalServices}/${totalServices}`);
+    csvRows.push(`Total Services;${totalServices}`);
+    csvRows.push(`Operational Services;${operationalServices}`);
+    csvRows.push(`Degraded Services;${statusCounts.degraded}`);
+    csvRows.push(`Down Services;${statusCounts.down}`);
+    csvRows.push(`Maintenance Services;${statusCounts.maintenance}`);
+    csvRows.push(`Overall Uptime;${uptimePercentage}%`);
     csvRows.push(`Active Incidents;${activeIncidents}`);
     csvRows.push(`Mean Time to Resolve;${mttr}m`);
     csvRows.push("");
 
-    // Services
-    csvRows.push("Services");
-    csvRows.push("Name;Category;Status;Last Updated");
-    services.forEach((service) => {
-      csvRows.push(`${service.name};${service.category};${service.status};${new Date(service.updatedAt).toLocaleString()}`);
+    // Services by Category
+    csvRows.push("Services Distribution by Category");
+    csvRows.push("Category;Count");
+    Object.entries(categoryDistribution).forEach(([name, value]) => {
+      csvRows.push(`${name};${value}`);
     });
     csvRows.push("");
 
-    // Server Metrics
-    csvRows.push("Server Metrics");
-    csvRows.push("Service;Updated;CPU;RAM;Disk");
-    services.forEach((service) => {
-      const serviceMetrics = filteredMetrics.filter((m) => m.serviceId === service.id);
-      const latestMetric = serviceMetrics[serviceMetrics.length - 1];
-      const avgCpu = serviceMetrics.length > 0
-        ? (serviceMetrics.reduce((sum, m) => sum + m.cpuUsage, 0) / serviceMetrics.length).toFixed(1)
-        : "N/A";
-      const avgRam = serviceMetrics.length > 0
-        ? (serviceMetrics.reduce((sum, m) => sum + m.ramUsage, 0) / serviceMetrics.length).toFixed(1)
-        : "N/A";
-      const avgDisk = serviceMetrics.length > 0
-        ? (serviceMetrics.reduce((sum, m) => sum + m.diskUsage, 0) / serviceMetrics.length).toFixed(1)
-        : "N/A";
-      
-      csvRows.push(`${service.name};${latestMetric ? format(new Date(latestMetric.timestamp), "MMM d HH:mm") : "N/A"};${avgCpu}${avgCpu !== "N/A" ? "%" : ""};${avgRam}${avgRam !== "N/A" ? "%" : ""};${avgDisk}${avgDisk !== "N/A" ? "%" : ""}`);
+    // Services by Type
+    csvRows.push("Services Distribution by Type");
+    csvRows.push("Type;Count");
+    Object.entries(typeStats).forEach(([type, count]) => {
+      csvRows.push(`${type};${count}`);
     });
     csvRows.push("");
 
-    // GitLab Incidents
-    csvRows.push("GitLab Incidents");
-    csvRows.push("Time;Project;Title;Status;Description");
-    incidents
-      .filter((inc) => {
-        const service = services.find((s) => s.id === inc.serviceId);
-        return service?.category === "Infrastructure" || service?.name.toLowerCase().includes("git");
-      })
-      .forEach((incident) => {
-        const service = services.find((s) => s.id === incident.serviceId);
-        const desc = (incident.description || incident.severity).replace(/;/g, ',');
-        csvRows.push(`${format(new Date(incident.startedAt), "MMM d HH:mm")};${service?.name || "Unknown"};${incident.title};${incident.status === "resolved" ? "✓" : "-"};${desc}`);
-      });
+    // Services by Environment
+    csvRows.push("Services Distribution by Environment");
+    csvRows.push("Environment;Count");
+    Object.entries(environmentStats).forEach(([env, count]) => {
+      csvRows.push(`${env};${count}`);
+    });
     csvRows.push("");
 
-    // S3 Storage
-    csvRows.push("S3 Storage");
-    csvRows.push("Time;Name;Quota;Used;Free");
-    services
-      .filter((s) => s.category === "Infrastructure" || s.name.toLowerCase().includes("storage") || s.name.toLowerCase().includes("s3"))
-      .forEach((service) => {
-        const serviceMetrics = filteredMetrics.filter((m) => m.serviceId === service.id);
-        const latestMetric = serviceMetrics[serviceMetrics.length - 1];
-        const avgDisk = serviceMetrics.length > 0
-          ? (serviceMetrics.reduce((sum, m) => sum + m.diskUsage, 0) / serviceMetrics.length)
-          : 0;
-        const quota = 100;
-        const used = avgDisk;
-        const free = quota - used;
+    csvRows.push("Top 10 Most Loaded Servers");
+    csvRows.push("Service;Avg CPU;Avg RAM;Avg Disk;Total Load;Incidents;Downtime;Stability;Max CPU;Max RAM");
+    topLoadedServers.slice(0, 10).forEach((s) => {
+      csvRows.push(`${s.name};${s.avgCpu}%;${s.avgRam}%;${s.avgDisk}%;${s.totalLoad}%;${s.incidents};${s.downtime};${s.stability}%;${s.maxCpu}%;${s.maxRam}%`);
+    });
+    csvRows.push("");
 
-        csvRows.push(`${latestMetric ? format(new Date(latestMetric.timestamp), "MMM d HH:mm") : "N/A"};${service.name};${quota.toFixed(0)}%;${used.toFixed(1)}%;${free.toFixed(1)}%`);
-      });
+    csvRows.push("Top 10 Least Loaded Servers");
+    csvRows.push("Service;Avg CPU;Avg RAM;Avg Disk;Total Load;Incidents;Downtime;Stability");
+    leastLoadedServers.slice(0, 10).forEach((s) => {
+      csvRows.push(`${s.name};${s.avgCpu}%;${s.avgRam}%;${s.avgDisk}%;${s.totalLoad}%;${s.incidents};${s.downtime};${s.stability}%`);
+    });
+    csvRows.push("");
+
+    csvRows.push("Top 10 Most Stable Servers");
+    csvRows.push("Service;Stability;Incidents;Downtime");
+    mostStableServers.slice(0, 10).forEach((s) => {
+      csvRows.push(`${s.name};${s.stability}%;${s.incidents};${s.downtime}`);
+    });
+    csvRows.push("");
+
+    csvRows.push("Top 10 Least Stable Servers");
+    csvRows.push("Service;Stability;Incidents;Downtime");
+    leastStableServers.slice(0, 10).forEach((s) => {
+      csvRows.push(`${s.name};${s.stability}%;${s.incidents};${s.downtime}`);
+    });
+    csvRows.push("");
+
+    csvRows.push("Downtime Statistics");
+    csvRows.push("Service;Total Incidents;Critical Incidents");
+    downtimeStats.forEach((s) => {
+      csvRows.push(`${s.name};${s.incidents};${s.critical}`);
+    });
+    csvRows.push("");
+
+    csvRows.push("Complete Services Analysis");
+    csvRows.push("Service;Category;Type;Environment;Avg CPU;Avg RAM;Avg Disk;Total Load;Max CPU;Max RAM;Incidents;Critical Downtime;Stability");
+    services.forEach((service) => {
+      const analysis = serverLoadAnalysis.find(s => s.name === service.name);
+      if (analysis) {
+        csvRows.push(`${service.name};${service.category};${service.type || 'N/A'};${service.region};${analysis.avgCpu}%;${analysis.avgRam}%;${analysis.avgDisk}%;${analysis.totalLoad}%;${analysis.maxCpu}%;${analysis.maxRam}%;${analysis.incidents};${analysis.downtime};${analysis.stability}%`);
+      }
+    });
+    csvRows.push("");
 
     const csvContent = "\uFEFF" + csvRows.join("\r\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `status-report-${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = `complete-analytics-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -458,12 +587,44 @@ export default function Analytics() {
     ...stats,
   }));
 
+  // Подсчет по статусам
+  const statusCounts = {
+    operational: services.filter((s) => s.status === "operational").length,
+    degraded: services.filter((s) => s.status === "degraded").length,
+    down: services.filter((s) => s.status === "down").length,
+    maintenance: services.filter((s) => s.status === "maintenance").length,
+    loading: services.filter((s) => s.status === "loading").length,
+  };
+
+  // Подсчет по типам
+  const typeStats = services.reduce((acc, service) => {
+    const type = service.type || "Unknown";
+    acc[type] = (acc[type] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Подсчет по окружениям
+  const environmentStats = services.reduce((acc, service) => {
+    const env = service.region || "Unknown";
+    acc[env] = (acc[env] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Список окружений
+  const environments = Array.from(new Set(services.map(s => s.region || "Unknown")));
+
+  // Функция получения имени сервиса
+  const getServiceName = (serviceId: string) => {
+    const service = services.find(s => s.id === serviceId);
+    return service ? service.name : "Unknown Service";
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold mb-2">Reports & Analytics</h1>
-          <p className="text-muted-foreground">Generate comprehensive reports with custom date ranges</p>
+          <h1 className="text-3xl font-semibold mb-2">Advanced Analytics & Reports</h1>
+          <p className="text-muted-foreground">Comprehensive server load analysis, stability metrics, and downtime statistics</p>
         </div>
         <Dialog>
           <DialogTrigger asChild>
@@ -595,6 +756,69 @@ export default function Analytics() {
         />
       </div>
 
+      {/* Расширенная статистика */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-green-500/10">
+              <Server className="w-5 h-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Total Services</p>
+              <p className="text-2xl font-semibold">{totalServices}</p>
+              <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                {operationalServices} operational
+              </p>
+            </div>
+          </div>
+        </Card>
+        
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-amber-500/10">
+              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Service Issues</p>
+              <p className="text-2xl font-semibold">{statusCounts.degraded + statusCounts.down}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {statusCounts.degraded} degraded, {statusCounts.down} down
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-blue-500/10">
+              <BarChart3 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Categories</p>
+              <p className="text-2xl font-semibold">{Object.keys(categoryDistribution).length}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {Object.keys(typeStats).length} types
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-purple-500/10">
+              <Activity className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Environments</p>
+              <p className="text-2xl font-semibold">{environments.length}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Active regions
+              </p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
       {filteredMetrics.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card className="p-4">
@@ -608,7 +832,7 @@ export default function Analytics() {
                   {(filteredMetrics.reduce((sum, m) => sum + m.cpuUsage, 0) / filteredMetrics.length).toFixed(1)}%
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {range ? `${format(range.start, "MMM d")} - ${format(range.end, "MMM d")}` : "All time"}
+                  Peak: {Math.max(...filteredMetrics.map(m => m.cpuUsage)).toFixed(1)}%
                 </p>
               </div>
             </div>
@@ -624,7 +848,7 @@ export default function Analytics() {
                   {(filteredMetrics.reduce((sum, m) => sum + m.ramUsage, 0) / filteredMetrics.length).toFixed(1)}%
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {range ? `${format(range.start, "MMM d")} - ${format(range.end, "MMM d")}` : "All time"}
+                  Peak: {Math.max(...filteredMetrics.map(m => m.ramUsage)).toFixed(1)}%
                 </p>
               </div>
             </div>
@@ -640,7 +864,7 @@ export default function Analytics() {
                   {(filteredMetrics.reduce((sum, m) => sum + m.diskUsage, 0) / filteredMetrics.length).toFixed(1)}%
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {range ? `${format(range.start, "MMM d")} - ${format(range.end, "MMM d")}` : "All time"}
+                  Peak: {Math.max(...filteredMetrics.map(m => m.diskUsage)).toFixed(1)}%
                 </p>
               </div>
             </div>
@@ -648,6 +872,132 @@ export default function Analytics() {
         </div>
       )}
 
+      {/* Анализ нагрузки серверов */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <TrendingUp className="w-5 h-5 text-red-500" />
+            <h3 className="text-lg font-medium">Топ 5 самых нагруженных серверов</h3>
+          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={topLoadedServers} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+              <YAxis dataKey="shortName" type="category" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} width={100} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "hsl(var(--popover))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "6px"
+                }}
+              />
+              <Legend />
+              <Bar dataKey="avgCpu" fill="hsl(220 70% 50%)" name="CPU %" />
+              <Bar dataKey="avgRam" fill="hsl(280 70% 50%)" name="RAM %" />
+              <Bar dataKey="avgDisk" fill="hsl(40 70% 50%)" name="Disk %" />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <TrendingDown className="w-5 h-5 text-green-500" />
+            <h3 className="text-lg font-medium">Топ 5 наименее нагруженных серверов</h3>
+          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={leastLoadedServers} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+              <YAxis dataKey="shortName" type="category" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} width={100} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "hsl(var(--popover))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "6px"
+                }}
+              />
+              <Legend />
+              <Bar dataKey="avgCpu" fill="hsl(142 76% 45%)" name="CPU %" />
+              <Bar dataKey="avgRam" fill="hsl(162 76% 45%)" name="RAM %" />
+              <Bar dataKey="avgDisk" fill="hsl(182 76% 45%)" name="Disk %" />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+
+      {/* Комплексный анализ - Radar Chart */}
+      <Card className="p-6">
+        <h3 className="text-lg font-medium mb-6">Комплексный анализ нагрузки топ серверов</h3>
+        <ResponsiveContainer width="100%" height={400}>
+          <RadarChart data={radarData}>
+            <PolarGrid stroke="hsl(var(--border))" />
+            <PolarAngleAxis dataKey="server" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+            <PolarRadiusAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+            <Radar name="CPU" dataKey="CPU" stroke="hsl(220 70% 50%)" fill="hsl(220 70% 50%)" fillOpacity={0.3} />
+            <Radar name="RAM" dataKey="RAM" stroke="hsl(280 70% 50%)" fill="hsl(280 70% 50%)" fillOpacity={0.3} />
+            <Radar name="Disk" dataKey="Disk" stroke="hsl(40 70% 50%)" fill="hsl(40 70% 50%)" fillOpacity={0.3} />
+            <Legend />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "hsl(var(--popover))",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: "6px"
+              }}
+            />
+          </RadarChart>
+        </ResponsiveContainer>
+      </Card>
+
+      {/* Статистика падений и стабильности */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <AlertTriangle className="w-5 h-5 text-red-500" />
+            <h3 className="text-lg font-medium">Статистика падений по серверам</h3>
+          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={downtimeStats.slice(0, 8)}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="name" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} angle={-45} textAnchor="end" height={80} />
+              <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "hsl(var(--popover))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "6px"
+                }}
+              />
+              <Legend />
+              <Bar dataKey="incidents" fill="hsl(38 92% 50%)" name="Всего инцидентов" />
+              <Bar dataKey="critical" fill="hsl(0 84% 60%)" name="Критические" />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <Activity className="w-5 h-5 text-green-500" />
+            <h3 className="text-lg font-medium">Самые стабильные серверы</h3>
+          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={mostStableServers}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="shortName" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} angle={-45} textAnchor="end" height={80} />
+              <YAxis domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "hsl(var(--popover))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "6px"
+                }}
+              />
+              <Bar dataKey="stability" fill="hsl(142 76% 45%)" name="Стабильность %" />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+
+      {/* Остальные графики */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6">
           <h3 className="text-lg font-medium mb-6">Uptime Trend</h3>
@@ -721,6 +1071,65 @@ export default function Analytics() {
         </Card>
       </div>
 
+      {/* Детальная таблица анализа */}
+      <Card className="p-6">
+        <h3 className="text-lg font-medium mb-6">Детальный анализ всех серверов</h3>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Сервер</TableHead>
+                <TableHead>CPU (avg)</TableHead>
+                <TableHead>RAM (avg)</TableHead>
+                <TableHead>Disk (avg)</TableHead>
+                <TableHead>Общая нагрузка</TableHead>
+                <TableHead>Инциденты</TableHead>
+                <TableHead>Падения</TableHead>
+                <TableHead>Стабильность</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {serverLoadAnalysis.map((server) => (
+                <TableRow key={server.name}>
+                  <TableCell className="font-medium">{server.name}</TableCell>
+                  <TableCell>
+                    <span className={server.avgCpu > 80 ? "text-red-600 dark:text-red-400 font-medium" : ""}>
+                      {server.avgCpu}%
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className={server.avgRam > 85 ? "text-amber-600 dark:text-amber-400 font-medium" : ""}>
+                      {server.avgRam}%
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className={server.avgDisk > 90 ? "text-red-600 dark:text-red-400 font-medium" : ""}>
+                      {server.avgDisk}%
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className={server.totalLoad > 70 ? "text-red-600 dark:text-red-400 font-semibold" : server.totalLoad > 50 ? "text-amber-600 dark:text-amber-400 font-medium" : "text-green-600 dark:text-green-400"}>
+                      {server.totalLoad}%
+                    </span>
+                  </TableCell>
+                  <TableCell>{server.incidents}</TableCell>
+                  <TableCell>
+                    <span className={server.downtime > 0 ? "text-red-600 dark:text-red-400 font-medium" : "text-green-600 dark:text-green-400"}>
+                      {server.downtime}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className={server.stability < 95 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400 font-medium"}>
+                      {server.stability}%
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6">
           <h3 className="text-lg font-medium mb-6">Service Status Distribution</h3>
@@ -785,225 +1194,6 @@ export default function Analytics() {
           </ResponsiveContainer>
         </Card>
       </div>
-
-      <Card className="p-6">
-        <h3 className="text-lg font-medium mb-6">Server Info</h3>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    <Cpu className="w-4 h-4" />
-                    CPU
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    <Server className="w-4 h-4" />
-                    RAM
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    <HardDrive className="w-4 h-4" />
-                    Disk
-                  </div>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {services.map((service) => {
-                const serviceMetrics = filteredMetrics.filter((m) => m.serviceId === service.id);
-                const latestMetric = serviceMetrics[serviceMetrics.length - 1];
-                const avgCpu = serviceMetrics.length > 0
-                  ? (serviceMetrics.reduce((sum, m) => sum + m.cpuUsage, 0) / serviceMetrics.length)
-                  : null;
-                const avgRam = serviceMetrics.length > 0
-                  ? (serviceMetrics.reduce((sum, m) => sum + m.ramUsage, 0) / serviceMetrics.length)
-                  : null;
-                const avgDisk = serviceMetrics.length > 0
-                  ? (serviceMetrics.reduce((sum, m) => sum + m.diskUsage, 0) / serviceMetrics.length)
-                  : null;
-
-                return (
-                  <TableRow key={service.id}>
-                    <TableCell className="font-medium">{service.name}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {latestMetric ? format(new Date(latestMetric.timestamp), "MMM d, HH:mm") : "N/A"}
-                    </TableCell>
-                    <TableCell>
-                      {avgCpu !== null ? (
-                        <span className={avgCpu > 80 ? "text-red-600 dark:text-red-400 font-medium" : ""}>
-                          {avgCpu.toFixed(1)}%
-                        </span>
-                      ) : "N/A"}
-                    </TableCell>
-                    <TableCell>
-                      {avgRam !== null ? (
-                        <span className={avgRam > 85 ? "text-amber-600 dark:text-amber-400 font-medium" : ""}>
-                          {avgRam.toFixed(1)}%
-                        </span>
-                      ) : "N/A"}
-                    </TableCell>
-                    <TableCell>
-                      {avgDisk !== null ? (
-                        <span className={avgDisk > 90 ? "text-red-600 dark:text-red-400 font-medium" : ""}>
-                          {avgDisk.toFixed(1)}%
-                        </span>
-                      ) : "N/A"}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
-
-      <Card className="p-6">
-        <h3 className="text-lg font-medium mb-6">Services Overview</h3>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last Updated</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {services.map((service) => (
-                <TableRow key={service.id}>
-                  <TableCell className="font-medium">{service.name}</TableCell>
-                  <TableCell>{service.category}</TableCell>
-                  <TableCell>
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        service.status === "operational"
-                          ? "bg-green-500/10 text-green-600 dark:text-green-400"
-                          : service.status === "degraded"
-                          ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                          : service.status === "down"
-                          ? "bg-red-500/10 text-red-600 dark:text-red-400"
-                          : "bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                      }`}
-                    >
-                      {service.status}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {new Date(service.updatedAt).toLocaleString()}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
-
-      <Card className="p-6">
-        <h3 className="text-lg font-medium mb-6">GitLab Incidents</h3>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Time</TableHead>
-                <TableHead>Project</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Done</TableHead>
-                <TableHead>Reason</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {incidents
-                .filter((inc) => {
-                  const service = services.find((s) => s.id === inc.serviceId);
-                  return service?.category === "Infrastructure" || service?.name.toLowerCase().includes("git");
-                })
-                .slice(0, 10)
-                .map((incident) => {
-                  const service = services.find((s) => s.id === incident.serviceId);
-                  const duration = incident.resolvedAt
-                    ? Math.round(
-                        (new Date(incident.resolvedAt).getTime() - new Date(incident.startedAt).getTime()) / (1000 * 60)
-                      )
-                    : null;
-                  return (
-                    <TableRow key={incident.id}>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {format(new Date(incident.startedAt), "HH:mm MMM d")}
-                      </TableCell>
-                      <TableCell className="font-medium">{service?.name || "Unknown"}</TableCell>
-                      <TableCell className="text-sm">{incident.title}</TableCell>
-                      <TableCell className="text-sm">
-                        {incident.status === "resolved" ? "✓" : "-"}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {incident.description || incident.severity}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
-
-      <Card className="p-6">
-        <h3 className="text-lg font-medium mb-6">S3 Storage Metrics</h3>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Time</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Quota</TableHead>
-                <TableHead>Unfree</TableHead>
-                <TableHead>Free</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {services
-                .filter((s) => s.category === "Infrastructure" || s.name.toLowerCase().includes("storage") || s.name.toLowerCase().includes("s3"))
-                .map((service) => {
-                  const serviceMetrics = filteredMetrics.filter((m) => m.serviceId === service.id);
-                  const latestMetric = serviceMetrics[serviceMetrics.length - 1];
-                  const avgDisk = serviceMetrics.length > 0
-                    ? (serviceMetrics.reduce((sum, m) => sum + m.diskUsage, 0) / serviceMetrics.length)
-                    : 0;
-
-                  const quota = 100;
-                  const used = avgDisk;
-                  const free = quota - used;
-
-                  return (
-                    <TableRow key={service.id}>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {latestMetric ? format(new Date(latestMetric.timestamp), "HH:mm MMM d") : "N/A"}
-                      </TableCell>
-                      <TableCell className="font-medium">{service.name}</TableCell>
-                      <TableCell className="text-sm">{quota.toFixed(0)}%</TableCell>
-                      <TableCell className="text-sm">
-                        <span className={used > 80 ? "text-red-600 dark:text-red-400 font-medium" : ""}>
-                          {used.toFixed(1)}%
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        <span className={free < 20 ? "text-amber-600 dark:text-amber-400 font-medium" : "text-green-600 dark:text-green-400"}>
-                          {free.toFixed(1)}%
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
     </div>
   );
 }

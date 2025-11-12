@@ -54,34 +54,122 @@ export default function Admin() {
   });
 
   useEffect(() => {
-    // Заглушка: при реальном сервере здесь будут fetch-запросы
-    setServices([]);
-    setIncidents([]);
-  }, []);
+    const loadData = async () => {
+      if (!isAuthenticated || !credentials) return;
 
-  const onSubmit = (data: Service) => {
-    const newService = { ...data, id: Date.now().toString() };
-    setServices((prev) => [...prev, newService]);
-    toast.success("Service added successfully!");
-    reset();
+      try {
+        const authHeader = `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`;
+
+        // Загружаем сервисы
+        const servicesResponse = await fetch("/api/services", {
+          headers: { Authorization: authHeader },
+        });
+        if (servicesResponse.ok) {
+          const servicesData = await servicesResponse.json();
+          setServices(servicesData);
+        }
+
+        // Загружаем инциденты
+        const incidentsResponse = await fetch("/api/incidents", {
+          headers: { Authorization: authHeader },
+        });
+        if (incidentsResponse.ok) {
+          const incidentsData = await incidentsResponse.json();
+          setIncidents(incidentsData);
+        }
+      } catch (error) {
+        console.error("Error loading data:", error);
+      }
+    };
+
+    loadData();
+  }, [isAuthenticated, credentials]);
+
+  const onSubmit = async (data: Service) => {
+    try {
+      if (!credentials) {
+        toast.error("Необходима авторизация");
+        return;
+      }
+
+      const authHeader = `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`;
+      const response = await fetch("/api/services", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: authHeader,
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (response.status === 401) {
+        toast.error("Сессия истекла. Войдите снова");
+        setIsAuthenticated(false);
+        setCredentials(null);
+        return;
+      }
+
+      if (!response.ok) {
+        toast.error("Ошибка при создании сервиса");
+        return;
+      }
+
+      const newService = await response.json();
+      setServices((prev) => [...prev, newService]);
+      toast.success("Сервис успешно добавлен!");
+      reset();
+    } catch (error) {
+      console.error("Error creating service:", error);
+      toast.error("Ошибка подключения к серверу");
+    }
   };
 
-  const onIncidentSubmit = (data: Incident) => {
-    const newIncident = {
-      ...data,
-      id: Date.now().toString(),
-      date: new Date().toLocaleString(),
-    };
-    setIncidents((prev) => [...prev, newIncident]);
-    toast.success("Incident reported!");
-    resetIncident();
+  const onIncidentSubmit = async (data: Incident) => {
+    try {
+      if (!credentials) {
+        toast.error("Необходима авторизация");
+        return;
+      }
+
+      const authHeader = `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`;
+      const response = await fetch("/api/incidents", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: authHeader,
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (response.status === 401) {
+        toast.error("Сессия истекла. Войдите снова");
+        setIsAuthenticated(false);
+        setCredentials(null);
+        return;
+      }
+
+      if (!response.ok) {
+        toast.error("Ошибка при создании инцидента");
+        return;
+      }
+
+      const newIncident = await response.json();
+      setIncidents((prev) => [...prev, newIncident]);
+      toast.success("Инцидент успешно создан!");
+      resetIncident();
+    } catch (error) {
+      console.error("Error creating incident:", error);
+      toast.error("Ошибка подключения к серверу");
+    }
   };
 
   const handleAuth = async (username: string, password: string) => {
     try {
+      const authHeader = `Basic ${btoa(`${username}:${password}`)}`;
       const response = await fetch("/api/auth/verify", {
+        method: "GET",
         headers: {
-          Authorization: `Basic ${btoa(`${username}:${password}`)}`,
+          Authorization: authHeader,
         },
       });
       
@@ -95,10 +183,12 @@ export default function Admin() {
         return;
       }
       
+      // Сохраняем учетные данные для последующих запросов
       setCredentials({ username, password });
       setIsAuthenticated(true);
       toast.success("Успешный вход в систему!");
     } catch (error) {
+      console.error("Auth error:", error);
       toast.error("Ошибка подключения к серверу");
     }
   };
